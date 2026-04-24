@@ -1,0 +1,44 @@
+/* MAIN */
+main {
+  height: 100vh;
+  margin-top: 50px;
+}
+
+main div#kiri {
+  border-left: 0.7px solid rgb(220, 220, 220);
+}
+
+main div#kanan p {
+  color: gray;
+}
+
+/* MEDIA QUERIES */
+@media (max-width: 768px) {
+  main {
+    height: 110vh;
+  }
+
+  main section#inti {
+    flex-direction: column;
+  }
+
+  main section#kiri,
+  main section#kanan {
+    width: 100%;
+  }
+
+  main section#kiri {
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+  }
+}
+
+@media screen and (max-width: 430px) {
+  main {
+    height: 140vh;
+  }
+
+  main div#kanan p {
+    text-align: center;
+  }
+}
