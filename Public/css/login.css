@@ -1,0 +1,38 @@
+/* MAIN */
+main {
+  height: 79vh;
+  margin-top: 50px;
+}
+
+main div#kanan p {
+  color: gray;
+}
+
+/* MEDIA QUERIES */
+@media (max-width: 768px) {
+  main section#inti {
+    flex-direction: column;
+  }
+
+  main section#kiri,
+  main section#kanan {
+    width: 100%;
+  }
+
+  main section#kiri {
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+  }
+
+  
+}
+
+@media screen and (max-width: 360px) {
+  main {
+    height: 100vh;
+  }
+
+  main div#kanan p {
+    text-align: center;
+  }
+}
