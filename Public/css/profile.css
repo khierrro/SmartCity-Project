@@ -1,0 +1,29 @@
+/* public/css/profile.css */
+main section {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+#kiri {
+  max-width: 300px;
+}
+
+#kiri img {
+  max-width: 100%;
+  border-radius: 50%;
+}
+
+#kanan {
+  max-width: 400px;
+}
+
+.profile-info {
+  background: #f8f9fa;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}

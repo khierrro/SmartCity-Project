@@ -15,13 +15,16 @@ app.use(session({
   saveUninitialized: false,
   cookie: { secure: false }
 }));
+
+// Root redirect based on session
 app.get('/', (req, res) => {
   if (req.session.user) {
-    res.redirect(JSON.stringify(req.session.user));
+    res.redirect('/pages/menu.html');   // sudah login
   } else {
-    res.redirect('index.html');
+    res.redirect('/index.html');        // landing page
   }
 });
+
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/health", async (req, res) => {
@@ -41,7 +44,7 @@ app.use((req, res) => {
 });
 
 sequelize.authenticate()
-  .then(() => console.log(' Database terkoneksi (Sequelize)'))
-  .catch(err => console.error(' Gagal koneksi database:', err));
+  .then(() => console.log('Database terkoneksi (Sequelize)'))
+  .catch(err => console.error('Gagal koneksi database:', err));
 
-app.listen(PORT, () => console.log(` Server berjalan di http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`Server berjalan di http://localhost:${PORT}`));
