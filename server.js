@@ -4,9 +4,11 @@ const session = require("express-session");
 const sequelize = require("./config/database");
 require("dotenv").config();
 
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(express.static('Public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
@@ -35,6 +37,10 @@ app.get("/api/health", async (req, res) => {
     res.status(500).json({ status: "error", database: "disconnected", message: error.message });
   }
 });
+
+const adminRoutes = require('./Routes/admin');
+app.use('/api/admin', adminRoutes);
+
 
 const authRoutes = require('./routes/authRoutes');
 app.use('/', authRoutes);
