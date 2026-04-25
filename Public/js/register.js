@@ -1,19 +1,19 @@
-const form = document.getElementById('registerForm');
+const form = document.getElementById("registerForm");
 
-form.addEventListener('submit', async function (e) {
+form.addEventListener("submit", async function (e) {
   e.preventDefault();
 
-  const name = document.getElementById('name').value;
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  const phone = document.getElementById('phone').value;
-  const address = document.getElementById('address').value;
-  const role = document.getElementById('role').value;
+  const name = document.getElementById("name").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const phone = document.getElementById("phone").value;
+  const address = document.getElementById("address").value;
+  const role = document.getElementById("role").value;
 
   try {
-    const res = await fetch('/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
         email,
@@ -28,10 +28,10 @@ form.addEventListener('submit', async function (e) {
     alert(data.message);
 
     if (res.ok) {
-      window.location.href = 'login.html';
+      window.location.href = "login.html";
     }
   } catch (err) {
     console.log(err);
-    alert('Gagal koneksi ke server');
+    alert("Gagal koneksi ke server");
   }
 });
