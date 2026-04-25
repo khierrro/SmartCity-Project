@@ -1,4 +1,4 @@
-// Lookup table untuk setiap role
+// public/script/login.js
 const roleConfig = {
   citizen: {
     pageTitle: "Login Warga - Smart City",
@@ -16,8 +16,7 @@ const roleConfig = {
     userIcon: "fa-solid fa-user-shield fa-3x",
     leftPanelClass: "border-danger",
     rightTitle: "AKSES KHUSUS",
-    rightText:
-      "Hanya admin yang dapat login. Tidak ada pendaftaran untuk admin.",
+    rightText: "Hanya admin yang dapat login. Tidak ada pendaftaran untuk admin.",
     showRegister: false,
     buttonClass: "btn-danger",
   },
@@ -25,52 +24,48 @@ const roleConfig = {
 
 const params = new URLSearchParams(window.location.search);
 const role = params.get("role") || "citizen";
-
 const config = roleConfig[role] || roleConfig.citizen;
 
 // Terapkan ke elemen HTML
 document.getElementById("pageTitle").textContent = config.pageTitle;
 document.getElementById("loginTitle").textContent = config.loginTitle;
 document.getElementById("userIcon").className = config.userIcon;
-document.getElementById("loginButton").className =
-  "btn w-100 mb-2 " + config.buttonClass;
-
+document.getElementById("loginButton").className = "btn w-100 mb-2 " + config.buttonClass;
 document.getElementById("rightTitle").textContent = config.rightTitle;
 document.getElementById("rightText").textContent = config.rightText;
-
 const registerLink = document.getElementById("registerLink");
-if (config.showRegister) {
-  registerLink.style.display = "inline-block";
-} else {
-  registerLink.style.display = "none";
-}
+registerLink.style.display = config.showRegister ? "inline-block" : "none";
 
-// Ubah border panel kiri jika ada kelas tambahan
 const leftPanel = document.getElementById("leftPanel");
-if (config.leftPanelClass) {
-  leftPanel.classList.add(config.leftPanelClass);
-}
+if (config.leftPanelClass) leftPanel.classList.add(config.leftPanelClass);
 
-const form = document.getElementById("loginForm");
-
-form.addEventListener("submit", async (e) => {
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
-  const res = await fetch("/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+  try {
+    const res = await fetch("/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-  const data = await res.json();
+    const data = await res.json();
+    alert(data.message);
 
-  alert(data.message);
-
-  if (res.ok) {
-    localStorage.setItem("user", JSON.stringify(data.user));
-    window.location.href = "/pages/menu.html";
+    if (res.ok) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      // Redirect sesuai role
+      if (data.user.role === "admin") {
+        window.location.href = "/pages/admin.html";
+      } else {
+        window.location.href = "/pages/menu.html";
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Gagal terhubung ke server");
   }
 });

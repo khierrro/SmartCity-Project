@@ -1,0 +1,39 @@
+/* Admin Panel Styles */
+.badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-block;
+}
+.badge-new { background-color: #3b82f6; color: white; }
+.badge-in_progress { background-color: #f59e0b; color: white; }
+.badge-resolved { background-color: #10b981; color: white; }
+.badge-hidden { background-color: #6b7280; color: white; }
+
+.facility-img {
+  width: 40px; height: 40px; object-fit: cover; border-radius: 5px;
+}
+
+/* Top report cards */
+.top-report-card {
+  border-left: 4px solid #3b82f6;
+  transition: box-shadow 0.2s;
+}
+.top-report-card:hover {
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Hover for facility table rows */
+tbody tr:hover { background-color: #f0f9ff; }
+/* Notification dropdown styling */
+#notificationDropdown {
+  min-width: 300px;
+}
+#notificationList::-webkit-scrollbar {
+  width: 4px;
+}
+#notificationList::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 2px;
+}

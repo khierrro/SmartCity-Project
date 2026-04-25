@@ -25,7 +25,13 @@ const Report = sequelize.define('Report', {
   vote_count: {
     type: DataTypes.INTEGER,
     defaultValue: 0
-  }
+  },
+  // inside sequelize.define('Report', { ... }, { ... })
+is_read: {
+  type: DataTypes.BOOLEAN,
+  defaultValue: false,
+  allowNull: false,
+},
 }, {
   tableName: 'reports',
   timestamps: true,
@@ -33,9 +39,8 @@ const Report = sequelize.define('Report', {
   createdAt: 'created_at',
   updatedAt: 'updated_at'
 });
-
 Report.associate = function(models) {
-  Report.belongsTo(models.users, { foreignKey: 'user_id' }); // <-- models.users, bukan models.User
+  Report.belongsTo(models.users, { foreignKey: 'user_id', as: 'User' });
   Report.belongsTo(models.Facility, { foreignKey: 'facility_id' });
 };
 

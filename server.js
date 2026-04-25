@@ -37,7 +37,12 @@ app.get("/api/health", async (req, res) => {
     res.status(500).json({ status: "error", database: "disconnected", message: error.message });
   }
 });
-
+app.get('/pages/admin.html', (req, res, next) => {
+  if (!req.session.user || req.session.user.role !== 'admin') {
+    return res.redirect('/login.html?role=admin');
+  }
+  next();
+});
 const adminRoutes = require('./Routes/admin');
 app.use('/api/admin', adminRoutes);
 
