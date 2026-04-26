@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pencarian Laporan – Admin Smart City</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="bg-gray-100">
+
+<!-- Navbar -->
+<nav class="bg-white shadow p-4 mb-6">
+  <div class="container mx-auto flex justify-between items-center">
+    <a href="/pages/admin.html" class="text-xl font-bold text-gray-800">
+      <i class="fas fa-shield-alt text-blue-600"></i> Admin Panel
+    </a>
+    <div class="flex space-x-4 text-sm">
+      <a href="/pages/admin-search.html" class="text-blue-600 font-semibold">
+        <i class="fas fa-search"></i> Cari Laporan
+      </a>
+      <a href="/pages/admin-facility-search.html" class="hover:text-blue-600">
+        <i class="fas fa-building"></i> Cari Fasilitas
+      </a>
+    </div>
+    <span class="text-sm text-gray-600">Admin: <span id="adminName">...</span></span>
+  </div>
+</nav>
+
+<div class="container mx-auto px-4 pb-12">
+
+  <!-- ── Search & Filter Card ─────────────────────────────────────── -->
+  <div class="bg-white rounded-lg shadow-md p-5 mb-6">
+    <h2 class="text-lg font-semibold mb-4 border-l-4 border-blue-500 pl-3">
+      <i class="fas fa-search text-blue-500"></i> Pencarian Laporan
+    </h2>
+
+    <form id="searchForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- Keyword -->
+      <div class="lg:col-span-3">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Kata Kunci</label>
+        <div class="relative">
+          <input id="q" type="text" placeholder="Cari judul, deskripsi, atau lokasi..."
+            class="w-full border rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-blue-400 outline-none" />
+          <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+        <select id="status" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 outline-none">
+          <option value="">Semua Status</option>
+          <option value="new">Baru</option>
+          <option value="in_progress">Diproses</option>
+          <option value="resolved">Selesai</option>
+          <option value="hidden">Tersembunyi</option>
+        </select>
+      </div>
+
+      <!-- Facility (dynamic + Lainnya) -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Fasilitas</label>
+        <select id="facility_id" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 outline-none">
+          <option value="">Semua Fasilitas</option>
+        </select>
+      </div>
+
+      <!-- Sort -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Urutkan</label>
+        <div class="flex gap-2">
+          <select id="sort_by" class="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 outline-none">
+            <option value="created_at">Tanggal Lapor</option>
+            <option value="updated_at">Terakhir Diupdate</option>
+            <option value="vote_count">Vote Terbanyak</option>
+          </select>
+          <select id="order" class="w-24 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 outline-none">
+            <option value="DESC">Terbaru</option>
+            <option value="ASC">Terlama</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Date From -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Dari</label>
+        <input id="date_from" type="date"
+          class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 outline-none" />
+      </div>
+
+      <!-- Date To -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Sampai</label>
+        <input id="date_to" type="date"
+          class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-400 outline-none" />
+      </div>
+
+      <!-- Buttons -->
+      <div class="lg:col-span-3 flex gap-3">
+        <button type="submit"
+          class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+          <i class="fas fa-search mr-1"></i> Cari
+        </button>
+        <button type="button" id="resetBtn"
+          class="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition">
+          <i class="fas fa-redo mr-1"></i> Reset
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Results ──────────────────────────────────────────────────── -->
+  <div class="bg-white rounded-lg shadow-md p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-semibold text-gray-800">
+        Hasil Pencarian <span id="resultCount" class="text-gray-500 font-normal text-sm"></span>
+      </h3>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">#</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Judul</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Pelapor</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Fasilitas</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Tanggal</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Vote</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Status</th>
+            <th class="px-4 py-3 text-left font-medium text-gray-500 uppercase">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody" class="bg-white divide-y divide-gray-200">
+          <tr>
+            <td colspan="8" class="px-4 py-8 text-center text-gray-400">
+              <i class="fas fa-spinner fa-spin text-2xl mb-2 block"></i> Memuat...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Load More button -->
+    <div class="text-center mt-4">
+      <button id="loadMoreBtn" class="bg-white border border-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-50 transition hidden">
+        <i class="fas fa-chevron-down mr-2"></i> Tampilkan lebih banyak
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 overflow-y-auto">
+  <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full">
+      <div class="flex justify-between items-start p-5 border-b">
+        <h3 class="text-lg font-semibold" id="modalTitle">Detail Laporan</h3>
+        <button id="closeModal" class="text-gray-400 hover:text-gray-600 text-xl">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="p-5 space-y-3" id="modalBody">
+        <!-- JSON preview or later full detail -->
+      </div>
+      <div class="p-5 border-t flex flex-wrap gap-2 items-center">
+        <label class="text-sm font-medium text-gray-700 mr-2">Ubah Status:</label>
+        <select id="modalStatusSelect"
+          class="border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-400 outline-none">
+          <option value="new">Baru</option>
+          <option value="in_progress">Diproses</option>
+          <option value="resolved">Selesai</option>
+          <option value="hidden">Tersembunyi</option>
+        </select>
+        <button id="saveStatusBtn"
+          class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-blue-700 transition">
+          <i class="fas fa-save mr-1"></i> Simpan
+        </button>
+        <button id="deleteReportBtn"
+          class="ml-auto bg-red-600 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-red-700 transition">
+          <i class="fas fa-trash mr-1"></i> Hapus Laporan
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/admin-search.js"></script>
+</body>
+</html>
