@@ -7,11 +7,9 @@ require("dotenv").config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 1. Body parsers
+// Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
-// 2. Session (MUST be before any route that uses req.session)
 app.use(session({
   secret: process.env.SESSION_SECRET || "rahasia123",
   resave: false,
@@ -19,60 +17,67 @@ app.use(session({
   cookie: { secure: false }
 }));
 
-// 3. Protect admin pages BEFORE static files
+// Protect admin pages
 app.get('/pages/admin.html', (req, res, next) => {
-  if (!req.session.user || req.session.user.role !== 'admin') {
-    return res.redirect('/login.html?role=admin');
-  }
+  if (!req.session.user || req.session.user.role !== 'admin') return res.redirect('/login.html?role=admin');
   next();
 });
 app.get('/pages/admin-search.html', (req, res, next) => {
-  if (!req.session.user || req.session.user.role !== 'admin') {
-    return res.redirect('/login.html?role=admin');
-  }
+  if (!req.session.user || req.session.user.role !== 'admin') return res.redirect('/login.html?role=admin');
   next();
 });
 
-// 4. Static files (only one, remove duplicate)
+// Static files
 app.use(express.static(path.join(__dirname, "public")));
 
-// 5. Root redirect
+// Root redirect
 app.get('/', (req, res) => {
-  if (req.session.user) {
-    return res.redirect('/pages/menu.html');
-  }
+  if (req.session.user) return res.redirect('/pages/menu.html');
   res.redirect('/index.html');
 });
 
-// 6. API: health check
+// Health check
 app.get("/api/health", async (req, res) => {
   try {
     await sequelize.authenticate();
     res.json({ status: "ok", database: "connected" });
   } catch (error) {
-    res.status(500).json({ status: "error", database: "disconnected", message: error.message });
+    res.status(500).json({ error: err.message });
   }
 });
-// 7. Auth routes (login, register, logout, /me)
+
+// Auth routes
 const authRoutes = require('./routes/authRoutes');
 app.use('/', authRoutes);
-const citizenFlagRouter = require('./routes/citizenflag');  // adjust path if needed
-app.use('/api/reports', citizenFlagRouter);
 
-// 8. Admin‑only routes (statistics, facilities CRUD, notifications, etc.)
-const adminRoutes = require('./routes/admin');  // corrected path (Routes → routes)
+// Citizen route for flagging (must be before report routes)
+const citizenFlagRoutes = require('./routes/citizenflag');
+app.use('/api/reports', citizenFlagRoutes);
+
+// Admin routes
+const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);
 
-// 9. Report routes (search, detail, create, status update, delete) – uses reportController
-const reportRoutes = require('./routes/reports'); 
+// Report routes (search, detail, create, status, delete, vote)
+const reportRoutes = require('./routes/reports');
 app.use('/api/reports', reportRoutes);
 
-// 10. 404 catch‑all
+// Comment routes (nested under reports)
+const commentRoutes = require('./routes/comments');
+app.use('/api/reports/:id/comments', commentRoutes);
+
+// Direct comment edit/delete
+const isAuth = require('./middleware/isAuth');
+const { deleteComment, editComment } = require('./controllers/commentController');
+app.delete('/api/comments/:id', isAuth, deleteComment);
+app.put('/api/comments/:id', isAuth, editComment);
+
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: "Halaman tidak ditemukan" });
 });
 
-// 11. Database connection & start
+// Start server
 sequelize.authenticate()
   .then(() => {
     console.log(' Database terkoneksi (Sequelize)');

@@ -13,8 +13,10 @@ const ReportFlag = sequelize.define('ReportFlag', {
   underscored: true,
 });
 
-// Associations (add in models/index.js or right here)
-// ReportFlag.belongsTo(User, { foreignKey: 'user_id' });
-// Report.hasMany(ReportFlag, { foreignKey: 'report_id' });
+// Associations setup
+ReportFlag.associate = (models) => {
+  ReportFlag.belongsTo(models.users, { foreignKey: 'user_id', as: 'User' });
+  ReportFlag.belongsTo(models.Report, { foreignKey: 'report_id' });
+};
 
 module.exports = ReportFlag;

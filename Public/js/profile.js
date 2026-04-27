@@ -1,4 +1,5 @@
 // script/profile.js
+
 document.addEventListener('DOMContentLoaded', () => {
   // Fetch and display user profile data
   fetchProfile();

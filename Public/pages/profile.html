@@ -24,12 +24,10 @@
     <link rel="stylesheet" href="../css/profile.css" />
   </head>
   <body>
-    <!-- NAVBAR (same as provided) -->
+    <!-- NAVBAR (citizen) -->
     <nav class="navbar navbar-expand-lg">
       <div class="container-fluid">
-        <a class="navbar-brand" href="menu.html" id="web-title"
-          >SMART<span>CITY</span></a
-        >
+        <a class="navbar-brand" href="menu.html" id="web-title">SMART<span>CITY</span></a>
         <button
           class="navbar-toggler"
           type="button"
@@ -44,25 +42,17 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
           <ul class="navbar-nav mx-auto mb-2 mx-3 mb-lg-0 gap-4">
             <li class="nav-item">
-              <a class="nav-link" aria-current="page" href="menu.html">HOME</a>
+              <a class="nav-link" href="menu.html">HOME</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="#">ABOUT</a>
+              <a class="nav-link" href="reports.html">LAPORAN</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="#">FEATURES</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#">NEWS</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#">CONTACT US</a>
+              <a class="nav-link" href="facilities.html">FASILITAS</a>
             </li>
           </ul>
-          <div>
-            <a class="btn btn-primary disabled" href="profile.html"
-              ><i class="fa-regular fa-circle-user"></i> &nbsp; PROFILE</a
-            >
+          <div id="navbarRight">
+            <!-- Akan diisi oleh JavaScript -->
           </div>
         </div>
       </div>
@@ -78,53 +68,87 @@
         </div>
 
         <!-- MAIN KANAN -->
-<div id="kanan">
-  <div class="profile-info">
-    <h3 class="fw-bold" id="displayName">-</h3>
-    <span class="badge bg-primary" id="displayRole">citizen</span>
-    <hr />
-    <p><i class="fa-solid fa-envelope me-2"></i> <strong>Email:</strong> <span id="displayEmail">-</span></p>
-    <p><i class="fa-solid fa-phone me-2"></i> <strong>Telepon:</strong> <span id="displayPhone">-</span></p>
-    <p><i class="fa-solid fa-location-dot me-2"></i> <strong>Alamat:</strong> <span id="displayAddress">-</span></p>
+        <div id="kanan">
+          <div class="profile-info">
+            <h3 class="fw-bold" id="displayName">-</h3>
+            <span class="badge bg-primary" id="displayRole">citizen</span>
+            <hr />
+            <p><i class="fa-solid fa-envelope me-2"></i> <strong>Email:</strong> <span id="displayEmail">-</span></p>
+            <p><i class="fa-solid fa-phone me-2"></i> <strong>Telepon:</strong> <span id="displayPhone">-</span></p>
+            <p><i class="fa-solid fa-location-dot me-2"></i> <strong>Alamat:</strong> <span id="displayAddress">-</span></p>
 
-    <!-- Buttons -->
-    <div class="d-grid gap-2 mt-4">
-      <a href="/pages/edit-profile.html" class="btn btn-outline-primary btn-sm">
-        <i class="fa-solid fa-pen-to-square me-1"></i> Edit Profil
-      </a>
-      <button id="logoutBtn" class="btn btn-outline-secondary btn-sm">
-        <i class="fa-solid fa-right-from-bracket me-1"></i> Logout
-      </button>
-      <button id="deleteAccountBtn" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
-        <i class="fa-solid fa-trash me-1"></i> Hapus Akun
-      </button>
-    </div>
-  </div>
-</div>
+            <!-- Buttons -->
+            <div class="d-grid gap-2 mt-4">
+              <a href="/pages/edit-profile.html" class="btn btn-outline-primary btn-sm">
+                <i class="fa-solid fa-pen-to-square me-1"></i> Edit Profil
+              </a>
+              <button id="logoutBtn" class="btn btn-outline-secondary btn-sm">
+                <i class="fa-solid fa-right-from-bracket me-1"></i> Logout
+              </button>
+              <button id="deleteAccountBtn" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="fa-solid fa-trash me-1"></i> Hapus Akun
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
-      
     </main>
+
+    <!-- Delete Modal (unchanged) -->
     <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title fw-bold" id="deleteModalLabel">Konfirmasi Hapus Akun</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p class="text-danger">Tindakan ini tidak dapat dibatalkan. Semua data terkait akan ikut terhapus atau di-anonimkan.</p>
-        <div class="mb-3">
-          <label for="deletePassword" class="form-label">Masukkan password Anda untuk melanjutkan</label>
-          <input type="password" class="form-control" id="deletePassword" placeholder="Password" />
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold" id="deleteModalLabel">Konfirmasi Hapus Akun</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-danger">Tindakan ini tidak dapat dibatalkan. Semua data terkait akan ikut terhapus atau di-anonimkan.</p>
+            <div class="mb-3">
+              <label for="deletePassword" class="form-label">Masukkan password Anda untuk melanjutkan</label>
+              <input type="password" class="form-control" id="deletePassword" placeholder="Password" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Hapus Akun</button>
+          </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Hapus Akun</button>
-      </div>
     </div>
-  </div>
-</div>
+
+    <!-- Navbar logic (citizen) -->
+    <script>
+      async function checkLogin() {
+        try {
+          const res = await fetch('/me');
+          if (!res.ok) throw new Error();
+          const user = await res.json();
+          if (user.loggedIn) {
+            document.getElementById('navbarRight').innerHTML = `
+              <span class="me-3">Halo, ${user.name}</span>
+              <a class="btn btn-outline-primary btn-sm" href="profile.html">
+                <i class="fa-regular fa-circle-user"></i> Profil
+              </a>
+              <button class="btn btn-outline-danger btn-sm ms-2" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Keluar
+              </button>
+            `;
+          }
+        } catch (_) {
+          document.getElementById('navbarRight').innerHTML = `
+            <a class="btn btn-outline-primary btn-sm" href="../login.html?role=citizen">Login</a>
+          `;
+        }
+      }
+      async function logout() {
+        await fetch('/logout', { method: 'POST' });
+        window.location.href = '/index.html';
+      }
+      document.addEventListener('DOMContentLoaded', checkLogin);
+    </script>
+
+    <!-- Profile logic (unchanged) -->
     <script src="../js/profile.js"></script>
 
     <!-- BOOTSTRAP JS -->

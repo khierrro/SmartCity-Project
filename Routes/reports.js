@@ -1,14 +1,53 @@
-// routes/reports.js
 const express = require('express');
 const router = express.Router();
 const isAuth = require('../middleware/isAuth');
 const isAdmin = require('../middleware/isAdmin');
 const reportController = require('../controllers/reportController');
+const { Report, Facility } = require('../models');   // ← tambahkan impor model
 
+// ---------- RUTE STATIS (HARUS DI ATAS /:id) ----------
 router.get('/search',       isAuth, reportController.searchReports);
+
+// Rute milik user yang login
+router.get('/my/stats', isAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const total = await Report.count({ where: { user_id: userId } });
+    const resolved = await Report.count({ where: { user_id: userId, status: 'resolved' } });
+    const inProgress = await Report.count({ where: { user_id: userId, status: 'in_progress' } });
+    res.json({ total, resolved, in_progress: inProgress });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/my', isAuth, async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const reports = await Report.findAll({
+      where: { user_id: userId },
+      include: [{ model: Facility, attributes: ['name'] }],
+      order: [['created_at', 'DESC']]
+    });
+    const formatted = reports.map(r => ({
+      id: r.id,
+      title: r.title,
+      facility: r.Facility ? r.Facility.name : null,
+      status: r.status,
+      vote_count: r.vote_count,
+      created_at: r.created_at
+    }));
+    res.json({ success: true, data: formatted });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ---------- RUTE DENGAN PARAMETER ----------
 router.get('/:id',          isAuth, reportController.getReportById);
 router.post('/',            isAuth, reportController.createReport);
 router.put('/:id/status',   isAdmin, reportController.updateStatus);
 router.delete('/:id',       isAdmin, reportController.deleteReport);
+router.post('/:id/vote',    isAuth, reportController.toggleVote);
 
 module.exports = router;

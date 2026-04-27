@@ -1,9 +1,10 @@
 'use strict';
-const { Op }   = require('sequelize');   // ← INI yang kurang, penyebab error
-const db       = require('../models');
-const Report   = db.Report;
-const User     = db.users;
-const Facility = db.Facility;
+const { Op }   = require('sequelize'); 
+const db = require('../models');
+const Report    = db.Report;
+const User      = db.users;
+const Facility  = db.Facility;
+const ReportFlag = db.ReportFlag;   
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 const VALID_STATUSES = ['new', 'in_progress', 'resolved', 'hidden'];
@@ -111,8 +112,8 @@ const getReportById = async (req, res) => {
   try {
     const report = await Report.findByPk(req.params.id, {
       include: [
-        { model: User,     as: 'User', attributes: ['name', 'email'] },
-        { model: Facility,             attributes: ['name', 'type', 'address', 'phone'] },
+        { model: User, as: 'User', attributes: ['name', 'email'] },
+        { model: Facility, attributes: ['name', 'type', 'address', 'phone'] },
       ],
     });
     if (!report) return res.status(404).json({ success: false, message: 'Laporan tidak ditemukan' });
@@ -124,7 +125,6 @@ const getReportById = async (req, res) => {
 
     res.json({ success: true, data: formatReport(report) });
   } catch (err) {
-    console.error('getReportById error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -187,5 +187,29 @@ const deleteReport = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+const toggleVote = async (req, res) => {
+  try {
+    const reportId = req.params.id;
+    const userId = req.user.id;
 
-module.exports = { searchReports, getReportById, createReport, updateStatus, deleteReport };
+    const existing = await UserReportVote.findOne({ where: { user_id: userId, report_id: reportId } });
+    if (existing) {
+      await existing.destroy();   // trigger will decrement vote_count
+      res.json({ success: true, voted: false, vote_count: await getVoteCount(reportId) });
+    } else {
+      await UserReportVote.create({ user_id: userId, report_id: reportId }); // trigger increments
+      res.json({ success: true, voted: true, vote_count: await getVoteCount(reportId) });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// helper to get current vote_count
+async function getVoteCount(reportId) {
+  const report = await Report.findByPk(reportId, { attributes: ['vote_count'] });
+  return report?.vote_count || 0;
+}
+
+
+module.exports = { searchReports, getReportById, createReport, updateStatus, deleteReport, toggleVote };

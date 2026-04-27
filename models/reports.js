@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-
+const ReportFlag = require('./ReportFlag');
 const Report = sequelize.define('Report', {
   title: {
     type: DataTypes.STRING(200),
@@ -39,11 +39,13 @@ is_read: {
   createdAt: 'created_at',
   updatedAt: 'updated_at'
 });
-Report.associate = function(models) {
+Report.associate = (models) => {
   Report.belongsTo(models.users, { foreignKey: 'user_id', as: 'User' });
   Report.belongsTo(models.Facility, { foreignKey: 'facility_id' });
+  Report.hasMany(models.ReportFlag, { foreignKey: 'report_id' });   // ← add this
 };
-const ReportFlag = require('./ReportFlag');
-Report.hasMany(ReportFlag, { foreignKey: 'report_id' });
-ReportFlag.belongsTo(Report, { foreignKey: 'report_id' });
+
+ReportFlag.associate = (models) => {
+  ReportFlag.belongsTo(models.Report, { foreignKey: 'report_id' });
+};
 module.exports = Report;
