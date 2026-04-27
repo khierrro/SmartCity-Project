@@ -265,4 +265,19 @@ router.put('/mark-all-read', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+router.get('/reports/:id/flags', isAdmin, async (req, res) => {
+  try {
+    const flags = await ReportFlag.findAll({
+      where: { report_id: req.params.id },
+      include: [{ model: User, as: 'User', attributes: ['name'] }],
+      order: [['created_at', 'DESC']]
+    });
+    res.json({ success: true, data: flags });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

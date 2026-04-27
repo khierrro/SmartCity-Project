@@ -53,10 +53,11 @@ app.get("/api/health", async (req, res) => {
     res.status(500).json({ status: "error", database: "disconnected", message: error.message });
   }
 });
-
 // 7. Auth routes (login, register, logout, /me)
 const authRoutes = require('./routes/authRoutes');
 app.use('/', authRoutes);
+const citizenFlagRouter = require('./routes/citizenflag');  // adjust path if needed
+app.use('/api/reports', citizenFlagRouter);
 
 // 8. Admin‑only routes (statistics, facilities CRUD, notifications, etc.)
 const adminRoutes = require('./routes/admin');  // corrected path (Routes → routes)

@@ -1,39 +1,40 @@
 'use strict';
-const { Op } = require('sequelize');
+const { Op }   = require('sequelize');   // ← INI yang kurang, penyebab error
 const db       = require('../models');
 const Report   = db.Report;
 const User     = db.users;
 const Facility = db.Facility;
 
-// ─── helpers ────────────────────────────────────────────────────────────────
-const VALID_STATUSES  = ['new', 'in_progress', 'resolved', 'hidden'];
-const VALID_SORT      = ['created_at', 'updated_at', 'vote_count'];
+// ─── helpers ─────────────────────────────────────────────────────────────────
+const VALID_STATUSES = ['new', 'in_progress', 'resolved', 'hidden'];
+const VALID_SORT     = ['created_at', 'updated_at', 'vote_count'];
 
 function formatReport(r) {
   return {
-    id:           r.id,
-    title:        r.title,
-    description:  r.description,
-    location_text:r.location_text,
-    image_path:   r.image_path,
-    status:       r.status,
-    vote_count:   r.vote_count,
-    flagged:      r.flagged,
-    reporter:     r.User     ? r.User.name     : 'Akun Dihapus',
-    facility:     r.Facility ? r.Facility.name : null,
-    facility_id:  r.facility_id,
-    created_at:   r.created_at,
-    updated_at:   r.updated_at,
+    id:            r.id,
+    title:         r.title,
+    description:   r.description,
+    location_text: r.location_text,
+    image_path:    r.image_path,
+    status:        r.status,
+    vote_count:    r.vote_count,
+    flagged:       r.flagged,
+    is_read:       r.is_read,
+    reporter:      r.User     ? r.User.name     : 'Akun Dihapus',
+    facility:      r.Facility ? r.Facility.name : null,
+    facility_id:   r.facility_id,
+    created_at:    r.created_at,
+    updated_at:    r.updated_at,
   };
 }
 
-// ─── GET /api/reports/search  (public – user & admin share same endpoint) ───
+// ─── GET /api/reports/search ──────────────────────────────────────────────────
 const searchReports = async (req, res) => {
   try {
     const {
       q           = '',
       status      = '',
-      facility_id = null,
+      facility_id = '',
       date_from   = '',
       date_to     = '',
       sort_by     = 'created_at',
@@ -44,7 +45,7 @@ const searchReports = async (req, res) => {
 
     const where = {};
 
-    // keyword search across title / description / location_text
+    // keyword search
     if (q.trim()) {
       where[Op.or] = [
         { title:         { [Op.like]: `%${q}%` } },
@@ -53,22 +54,16 @@ const searchReports = async (req, res) => {
       ];
     }
 
-    // status filter (admin sees all; citizen cannot filter for 'hidden')
+    // status filter — admin sees all statuses including 'hidden'
+    const isAdmin = req.user && req.user.role === 'admin';
     if (status && VALID_STATUSES.includes(status)) {
       where.status = status;
-    } else {
-      // non-admin: hide 'hidden' reports
-      const isAdmin = req.user && req.user.role === 'admin';
-      if (!isAdmin) where.status = { [Op.ne]: 'hidden' };
+    } else if (!isAdmin) {
+      // citizen cannot see hidden reports
+      where.status = { [Op.ne]: 'hidden' };
     }
 
-    if (facility_id) {
-  if (facility_id === 'null') {
-    where.facility_id = null;       // reports with no facility
-  } else {
-    where.facility_id = parseInt(facility_id);
-  }
-}
+    if (facility_id) where.facility_id = Number(facility_id);
 
     // date range
     if (date_from || date_to) {
@@ -83,8 +78,8 @@ const searchReports = async (req, res) => {
 
     const sortField = VALID_SORT.includes(sort_by) ? sort_by : 'created_at';
     const sortDir   = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-    const pageNum   = Math.max(1, parseInt(page));
-    const limitNum  = Math.min(100, Math.max(1, parseInt(limit)));
+    const pageNum   = Math.max(1, parseInt(page)  || 1);
+    const limitNum  = Math.min(100, Math.max(1, parseInt(limit) || 10));
     const offset    = (pageNum - 1) * limitNum;
 
     const { count, rows } = await Report.findAndCountAll({
@@ -111,7 +106,7 @@ const searchReports = async (req, res) => {
   }
 };
 
-// ─── GET /api/reports/:id ────────────────────────────────────────────────────
+// ─── GET /api/reports/:id ─────────────────────────────────────────────────────
 const getReportById = async (req, res) => {
   try {
     const report = await Report.findByPk(req.params.id, {
@@ -122,7 +117,6 @@ const getReportById = async (req, res) => {
     });
     if (!report) return res.status(404).json({ success: false, message: 'Laporan tidak ditemukan' });
 
-    // non-admin cannot view hidden reports
     const isAdmin = req.user && req.user.role === 'admin';
     if (report.status === 'hidden' && !isAdmin) {
       return res.status(403).json({ success: false, message: 'Laporan tidak tersedia' });
@@ -130,17 +124,21 @@ const getReportById = async (req, res) => {
 
     res.json({ success: true, data: formatReport(report) });
   } catch (err) {
+    console.error('getReportById error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ─── POST /api/reports  (citizen creates report) ────────────────────────────
+// ─── POST /api/reports ────────────────────────────────────────────────────────
 const createReport = async (req, res) => {
   try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Silakan login' });
+
     const { title, description, facility_id, location_text } = req.body;
     if (!title || !description) {
       return res.status(400).json({ success: false, message: 'title dan description wajib diisi' });
     }
+
     const image_path = req.file ? '/reports/' + req.file.filename : null;
     const report = await Report.create({
       user_id:       req.user.id,
@@ -154,11 +152,12 @@ const createReport = async (req, res) => {
     });
     res.status(201).json({ success: true, data: report });
   } catch (err) {
+    console.error('createReport error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ─── PUT /api/admin/reports/:id/status  (admin only) ────────────────────────
+// ─── PUT /api/reports/:id/status  (admin only) ───────────────────────────────
 const updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -171,11 +170,12 @@ const updateStatus = async (req, res) => {
     await report.update({ status, is_read: true });
     res.json({ success: true, data: { id: report.id, status: report.status } });
   } catch (err) {
+    console.error('updateStatus error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ─── DELETE /api/admin/reports/:id  (admin only) ────────────────────────────
+// ─── DELETE /api/reports/:id  (admin only) ───────────────────────────────────
 const deleteReport = async (req, res) => {
   try {
     const report = await Report.findByPk(req.params.id);
@@ -183,6 +183,7 @@ const deleteReport = async (req, res) => {
     await report.destroy();
     res.json({ success: true, message: 'Laporan dihapus' });
   } catch (err) {
+    console.error('deleteReport error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };

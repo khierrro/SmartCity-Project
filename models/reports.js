@@ -43,5 +43,7 @@ Report.associate = function(models) {
   Report.belongsTo(models.users, { foreignKey: 'user_id', as: 'User' });
   Report.belongsTo(models.Facility, { foreignKey: 'facility_id' });
 };
-
+const ReportFlag = require('./ReportFlag');
+Report.hasMany(ReportFlag, { foreignKey: 'report_id' });
+ReportFlag.belongsTo(Report, { foreignKey: 'report_id' });
 module.exports = Report;
