@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Waktu pembuatan: 25 Apr 2026 pada 22.17
+-- Waktu pembuatan: 26 Apr 2026 pada 19.09
 -- Versi server: 10.4.32-MariaDB
 -- Versi PHP: 8.2.12
 
@@ -100,7 +100,7 @@ CREATE TABLE `reports` (
 --
 
 INSERT INTO `reports` (`id`, `user_id`, `facility_id`, `title`, `description`, `image_path`, `location_text`, `latitude`, `longitude`, `status`, `is_read`, `flagged`, `vote_count`, `created_at`, `updated_at`) VALUES
-(99, 12, 1, 'Lampu Jalan Mati di Depan RSUD', 'Lampu jalan utama depan RSUD sudah 3 hari mati, sangat gelap malam hari.', NULL, 'Jl. Kesehatan No.1', NULL, NULL, 'in_progress', 1, 0, 15, '2026-04-20 09:15:00', '2026-04-25 20:12:21'),
+(99, 12, 1, 'Lampu Jalan Mati di Depan RSUD', 'Lampu jalan utama depan RSUD sudah 3 hari mati, sangat gelap malam hari.', NULL, 'Jl. Kesehatan No.1', NULL, NULL, 'resolved', 1, 0, 15, '2026-04-20 09:15:00', '2026-04-26 09:34:09'),
 (100, 13, NULL, 'Sampah Menumpuk di Pasar', 'Tumpukan sampah di belakang pasar tradisional sudah seminggu tidak diangkut.', NULL, 'Pasar Induk, Jl. Pasar Baru', NULL, NULL, 'in_progress', 1, 0, 8, '2026-04-21 10:30:00', '2026-04-25 20:12:21'),
 (101, 14, 2, 'Trotoar Rusak di Polresta', 'Trotoar di seberang Polresta ambles, membahayakan pejalan kaki.', NULL, 'Jl. Keamanan No.10', NULL, NULL, 'in_progress', 1, 0, 5, '2026-04-22 08:00:00', '2026-04-25 20:12:21'),
 (102, 15, NULL, 'Jembatan Retak di Desa', 'Jembatan kecil di desa retak cukup parah.', NULL, 'Desa Sukamaju', NULL, NULL, 'in_progress', 1, 0, 9, '2026-04-17 07:30:00', '2026-04-25 20:12:21'),
@@ -110,6 +110,20 @@ INSERT INTO `reports` (`id`, `user_id`, `facility_id`, `title`, `description`, `
 (106, 12, 1, 'Pohon Tumbang di Halaman RSUD', 'Pohon besar tumbang akibat angin kencang.', NULL, 'Halaman RSUD Kota Sejahtera', NULL, NULL, 'in_progress', 1, 0, 30, '2026-04-18 16:20:00', '2026-04-26 03:11:32'),
 (107, 13, 6, 'Kebisingan di Polsek', 'Motor berknalpot bising di depan Polsek.', NULL, 'Jl. Anggrek No.17', NULL, NULL, 'in_progress', 1, 0, 6, '2026-04-25 21:00:00', '2026-04-25 20:12:21'),
 (108, 14, NULL, 'Saluran Air Tersumbat di Perumahan', 'Drainase tersumbat sampah plastik.', NULL, 'Komplek Griya Asri', NULL, NULL, 'in_progress', 1, 0, 3, '2026-04-24 11:00:00', '2026-04-25 20:12:21');
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `report_flags`
+--
+
+CREATE TABLE `report_flags` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `report_id` int(11) NOT NULL,
+  `reason` varchar(255) DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -201,6 +215,14 @@ ALTER TABLE `reports`
   ADD KEY `idx_location` (`location_text`(100));
 
 --
+-- Indeks untuk tabel `report_flags`
+--
+ALTER TABLE `report_flags`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uq_user_report` (`user_id`,`report_id`),
+  ADD KEY `report_id` (`report_id`);
+
+--
 -- Indeks untuk tabel `users`
 --
 ALTER TABLE `users`
@@ -238,6 +260,12 @@ ALTER TABLE `reports`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=109;
 
 --
+-- AUTO_INCREMENT untuk tabel `report_flags`
+--
+ALTER TABLE `report_flags`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT untuk tabel `users`
 --
 ALTER TABLE `users`
@@ -267,6 +295,13 @@ ALTER TABLE `comments`
 ALTER TABLE `reports`
   ADD CONSTRAINT `reports_fk_facility` FOREIGN KEY (`facility_id`) REFERENCES `facilities` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `reports_fk_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Ketidakleluasaan untuk tabel `report_flags`
+--
+ALTER TABLE `report_flags`
+  ADD CONSTRAINT `report_flags_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `report_flags_ibfk_2` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE CASCADE;
 
 --
 -- Ketidakleluasaan untuk tabel `user_report_votes`
