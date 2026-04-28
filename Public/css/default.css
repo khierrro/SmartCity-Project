@@ -21,7 +21,12 @@ body {
 nav a#web-title {
   font-weight: bold;
 }
-
+#reportContainer img {
+  object-fit: cover;
+  max-height: 400px;
+  width: 100%;
+  border-radius: 8px;
+}
 nav a#web-title span {
   color: BLUE;
 }
@@ -32,4 +37,37 @@ nav ul li {
 
 nav ul li:hover {
   border-bottom: 1.5px solid blue;
+}
+/* ---------- Report Detail Image ---------- */
+#reportContainer img {
+  object-fit: cover;
+  max-height: 350px;
+  width: 100%;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+/* ---------- Citizen Feed Cards ---------- */
+#reportList .card {
+  border: none;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#reportList .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+}
+
+#reportList .card-title a {
+  color: #1e40af;
+  font-weight: 600;
+}
+
+#reportList .card-title a:hover {
+  text-decoration: underline;
+}
+
+.badge {
+  font-weight: 500;
+  letter-spacing: 0.3px;
 }

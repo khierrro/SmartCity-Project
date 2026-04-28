@@ -176,7 +176,7 @@ function renderTable(reports) {
 
 // ── Go to detail (no redirect) ─────────────────────────
 function goToDetail(id) {
-  window.location.href = '/pages/report-detail?id=' + id;
+  window.location.href = '/report-detail?id=' + id;
 }
 window.goToDetail = goToDetail;
 

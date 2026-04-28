@@ -137,8 +137,15 @@ async function saveStatus() {
 }
 async function deleteReport() {
   if (!confirm('Hapus laporan ini?')) return;
-  await apiFetch(`${API}/reports/${reportId}`, { method: 'DELETE' });
-  window.location.href = 'reports.html';
+  const data = await apiFetch(`${API}/reports/${reportId}`, { method: 'DELETE' });
+  if (data?.success) {
+    showToast('Laporan berhasil dihapus', 'success');
+    setTimeout(() => {
+      window.location.href = '/pages/admin.html';   // admin dashboard
+    }, 800);
+  } else {
+    showToast('Gagal menghapus laporan', 'error');
+  }
 }
 
 // ---------- citizen actions ----------
@@ -213,21 +220,69 @@ async function loadComments() {
 
 function renderComment(c, depth = 0) {
   const replies = (c.Replies || []).map(r => renderComment(r, depth + 1)).join('');
+  const isOwner = currentUser && currentUser.id === c.user_id;
+  const showActions = c.can_edit;   // ← now from backend
+
   return `
     <div class="ms-${depth * 3} border-start border-2 ps-3 mb-3">
       <div class="bg-light rounded p-2">
-        <div class="d-flex justify-content-between small">
-          <strong>${esc(c.Author?.name || 'Anonim')}</strong>
-          <span class="text-muted">${fmtDate(c.created_at)}</span>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <strong class="small">${esc(c.Author?.name || 'Anonim')}</strong>
+            <small class="text-muted ms-2">${fmtDate(c.created_at)}</small>
+            ${c.is_edited ? '<span class="text-muted fst-italic small ms-1">(diedit)</span>' : ''}
+          </div>
+          ${showActions ? `
+            <div class="dropdown">
+              <button class="btn btn-link btn-sm text-muted" data-bs-toggle="dropdown">
+                <i class="fas fa-ellipsis-v"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="#" onclick="startEditComment(${c.id}, '${esc(c.content)}')"><i class="fas fa-pen me-2"></i>Edit</a></li>
+                <li><a class="dropdown-item text-danger" href="#" onclick="deleteComment(${c.id})"><i class="fas fa-trash me-2"></i>Hapus</a></li>
+              </ul>
+            </div>
+          ` : ''}
         </div>
-        <p class="mb-1 small">${esc(c.content)}</p>
-        <button class="reply-btn btn btn-link btn-sm p-0" data-id="${c.id}" data-name="${esc(c.Author?.name || 'Anonim')}">Balas</button>
+        <p class="mb-1 small" id="comment-text-${c.id}">${esc(c.content)}</p>
+        ${currentUser ? `<button class="reply-btn btn btn-link btn-sm p-0" data-id="${c.id}" data-name="${esc(c.Author?.name || 'Anonim')}">Balas</button>` : ''}
       </div>
       ${replies}
     </div>
   `;
 }
+async function editComment(commentId, currentContent) {
+  const newContent = prompt('Edit komentar Anda:', currentContent);
+  if (newContent === null || newContent.trim() === '') return;  // cancelled or empty
 
+  try {
+    const data = await apiFetch(`/api/comments/${commentId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ content: newContent.trim() })
+    });
+    if (data?.success) {
+      loadComments(); // refresh list
+    } else {
+      alert(data?.message || 'Gagal mengedit komentar');
+    }
+  } catch (err) {
+    alert('Gagal terhubung ke server');
+  }
+}
+async function deleteComment(commentId) {
+  if (!confirm('Hapus komentar ini?')) return;
+
+  try {
+    const data = await apiFetch(`/api/comments/${commentId}`, { method: 'DELETE' });
+    if (data?.success) {
+      loadComments(); // refresh list
+    } else {
+      alert(data?.message || 'Gagal menghapus komentar');
+    }
+  } catch (err) {
+    alert('Gagal terhubung ke server');
+  }
+}
 function startReply(id, name) {
   replyToId = id;
   document.getElementById('commentInput').placeholder = `Balas ${name}...`;
@@ -258,3 +313,48 @@ async function submitComment() {
     alert(data?.message || 'Gagal');
   }
 }
+// ---------- inline comment editing ----------
+function startEditComment(commentId, currentContent) {
+  const textEl = document.getElementById(`comment-text-${commentId}`);
+  if (!textEl) return;
+
+  // Replace the comment text with a textarea and Save/Cancel buttons
+  textEl.innerHTML = `
+    <textarea id="edit-text-${commentId}" class="form-control form-control-sm mb-1" rows="2" style="resize:none;">${currentContent}</textarea>
+    <div class="d-flex gap-1">
+      <button class="btn btn-sm btn-primary" onclick="performEdit(${commentId})">
+        <i class="fas fa-save"></i>
+      </button>
+      <button class="btn btn-sm btn-secondary" onclick="loadComments()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `;
+}
+
+async function performEdit(commentId) {
+  const textarea = document.getElementById(`edit-text-${commentId}`);
+  const newContent = textarea.value.trim();
+  if (!newContent) return alert('Komentar tidak boleh kosong');
+
+  const data = await apiFetch(`/api/comments/${commentId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ content: newContent })
+  });
+
+  if (data?.success) {
+    loadComments(); // refresh the whole list
+  } else {
+    alert(data?.message || 'Gagal mengedit komentar');
+  }
+}
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.className = `fixed bottom-4 right-4 z-50 px-5 py-3 rounded-lg text-white text-sm ${type==='success'?'bg-green-600':'bg-red-600'}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+window.startEditComment = startEditComment;
+window.performEdit = performEdit;
+window.deleteComment = deleteComment;

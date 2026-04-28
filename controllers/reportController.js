@@ -11,7 +11,12 @@ const sequelize   = db.sequelize;          // ← biar nggak undefined
 
 const VALID_STATUSES = ['new', 'in_progress', 'resolved', 'hidden'];
 const VALID_SORT     = ['created_at', 'updated_at', 'vote_count'];
+const fs = require('fs');
+const path = require('path');
 
+// Inside deleteReport (admin)
+
+// Also apply the same file‑deletion logic inside deleteOwnReport (citizen)
 function formatReport(r) {
   return {
     id:            r.id,
@@ -23,7 +28,6 @@ function formatReport(r) {
     vote_count:    r.vote_count,
     flagged:       r.flagged,
     is_read:       r.is_read,
-    flag_count:    parseInt(r.get?.('flag_count')) || 0,
     reporter:      r.User     ? r.User.name     : 'Akun Dihapus',
     facility:      r.Facility ? r.Facility.name : null,
     facility_id:   r.facility_id,
@@ -102,17 +106,13 @@ const searchReports = async (req, res) => {
     }
 
     // 3) Format data
-    const formatted = rows.map(r => ({
-      id:            r.id,
-      title:         r.title,
-      reporter:      r.User ? r.User.name : 'Akun Dihapus',
-      facility:      r.Facility ? r.Facility.name : '-',
-      status:        r.status,
-      vote_count:    r.vote_count,
-      flag_count:    parseInt(flagCounts[r.id]) || 0,
-      date:          r.created_at.toISOString().split('T')[0],
-      created_at:    r.created_at,
-    }));
+    // 3) Format data and add flag_count
+    const formatted = rows.map(r => {
+      const item = formatReport(r);
+      item.flag_count = parseInt(flagCounts[r.id]) || 0;
+      item.date = r.created_at.toISOString().split('T')[0];
+      return item;
+    });
 
     res.json({
       success:    true,
@@ -259,5 +259,75 @@ async function getVoteCount(reportId) {
   const report = await Report.findByPk(reportId, { attributes: ['vote_count'] });
   return report?.vote_count || 0;
 }
+// -------------------- updateOwnReport (citizen) --------------------
+const updateOwnReport = async (req, res) => {
+  try {
+    const report = await Report.findByPk(req.params.id);
+    if (!report) return res.status(404).json({ success: false, message: 'Laporan tidak ditemukan' });
 
-module.exports = { searchReports, getReportById, createReport, updateStatus, deleteReport, toggleVote };
+    // Only the owner can edit
+    if (report.user_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Tidak punya izin' });
+    }
+
+    // only allow editing if status is 'new' or 'in_progress'
+     if (!['new', 'in_progress'].includes(report.status)) {
+       return res.status(400).json({ success: false, message: 'Laporan sudah diproses, tidak dapat diedit' });
+     }
+
+    const { title, description, location_text, facility_id } = req.body;
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (location_text !== undefined) updateData.location_text = location_text;
+    if (facility_id !== undefined) updateData.facility_id = facility_id || null;
+
+    // If new image uploaded
+    if (req.file) {
+      updateData.image_path = '/uploads/reports/' + req.file.filename;
+    }
+
+    await report.update(updateData);
+    res.json({ success: true, data: report });
+  } catch (err) {
+    console.error('updateOwnReport error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// -------------------- deleteOwnReport (citizen) --------------------
+
+// deleteOwnReport – also delete the file
+const deleteOwnReport = async (req, res) => {
+  try {
+    const report = await Report.findByPk(req.params.id);
+    if (!report) return res.status(404).json({ success: false, message: 'Laporan tidak ditemukan' });
+
+    if (report.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Tidak punya izin' });
+    }
+
+    if (report.image_path) {
+      const filePath = path.join(__dirname, '..', report.image_path);
+      fs.unlink(filePath, (err) => {
+        if (err) console.error('Failed to delete file:', filePath, err);
+      });
+    }
+
+    await report.destroy();
+    res.json({ success: true, message: 'Laporan dihapus' });
+  } catch (err) {
+    console.error('deleteOwnReport error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+module.exports = {
+  searchReports,
+  getReportById,
+  createReport,
+  updateStatus,
+  deleteReport,
+  toggleVote,
+  updateOwnReport,
+  deleteOwnReport, 
+};

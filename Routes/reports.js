@@ -43,9 +43,13 @@ router.get('/my', isAuth, async (req, res) => {
     const formatted = reports.map(r => ({
       id: r.id,
       title: r.title,
+      description: r.description,               // ← add
+      location_text: r.location_text,           // ← add
       facility: r.Facility ? r.Facility.name : null,
+      facility_id: r.facility_id,               // ← add
       status: r.status,
       vote_count: r.vote_count,
+      image_path: r.image_path,                // optional for future
       created_at: r.created_at
     }));
     res.json({ success: true, data: formatted });
@@ -56,9 +60,11 @@ router.get('/my', isAuth, async (req, res) => {
 
 // ---------- RUTE DENGAN PARAMETER ----------
 router.get('/:id',          isAuth, reportController.getReportById);
-router.post('/',            isAuth, reportController.createReport);
+router.post('/', isAuth, upload.single('image'), reportController.createReport);
 router.put('/:id/status',   isAdmin, reportController.updateStatus);
-router.delete('/:id',       isAdmin, reportController.deleteReport);
+// Citizen edit & delete own reports
+router.put('/:id',    isAuth, upload.single('image'), reportController.updateOwnReport);
+router.delete('/:id', isAuth, reportController.deleteOwnReport);
 router.post('/:id/vote',    isAuth, reportController.toggleVote);
 
 module.exports = router;

@@ -28,6 +28,7 @@ app.get('/pages/admin-search.html', (req, res, next) => {
 });
 
 // Static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(path.join(__dirname, "public")));
 
 // Root redirect
@@ -42,7 +43,7 @@ app.get("/api/health", async (req, res) => {
     await sequelize.authenticate();
     res.json({ status: "ok", database: "connected" });
   } catch (error) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -50,9 +51,10 @@ app.get("/api/health", async (req, res) => {
 const authRoutes = require('./routes/authRoutes');
 app.use('/', authRoutes);
 
-// Citizen route for flagging (must be before report routes)
+// Citizen flagging
 const citizenFlagRoutes = require('./routes/citizenflag');
-app.use('/api/reports', citizenFlagRoutes);   // <-- before reportRoutes
+app.use('/api/reports', citizenFlagRoutes);
+
 // Admin routes
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);
@@ -71,25 +73,30 @@ const { deleteComment, editComment } = require('./controllers/commentController'
 app.delete('/api/comments/:id', isAuth, deleteComment);
 app.put('/api/comments/:id', isAuth, editComment);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: "Halaman tidak ditemukan" });
+// -------------------- PUBLIC APIs (before 404) --------------------
+// Public facilities list
+app.get('/api/facilities', async (req, res) => {
+  const Facility = require('./models/Facility');
+  const facilities = await Facility.findAll({ order: [['name', 'ASC']] });
+  res.json(facilities);
 });
-// Halaman detail laporan – navbar dinamis, URL bersih
+
+// Dynamic report detail page (with navbar injection)
 app.get('/report-detail', (req, res) => {
   const fs = require('fs');
-  const path = require('path');
   const filePath = path.join(__dirname, 'public', 'pages', 'report-detail.html');
 
   fs.readFile(filePath, 'utf8', (err, html) => {
-    if (err) return res.status(500).send('Error loading page');
+    if (err) {
+      console.error('Template error:', err);
+      return res.status(500).send('Error loading page');
+    }
 
     let navbar = '';
     const isAdmin = req.session.user && req.session.user.role === 'admin';
     const isLoggedIn = !!req.session.user;
 
     if (isAdmin) {
-      // Navbar ADMIN
       navbar = `
       <nav class="navbar navbar-expand-lg sticky-top bg-white shadow" style="z-index:1000;">
         <div class="container-fluid">
@@ -115,7 +122,6 @@ app.get('/report-detail', (req, res) => {
         </div>
       </nav>`;
     } else {
-      // Navbar WARGA / TAMU
       navbar = `
       <nav class="navbar navbar-expand-lg sticky-top bg-white shadow" style="z-index:1000;">
         <div class="container-fluid">
@@ -152,21 +158,19 @@ app.get('/report-detail', (req, res) => {
       </nav>`;
     }
 
-    // Ganti placeholder dengan navbar
     const result = html.replace('<!-- NAVBAR -->', navbar);
     res.send(result);
   });
 });
-// Public facilities list
-app.get('/api/facilities', async (req, res) => {
-  const Facility = require('./models/Facility');
-  const facilities = await Facility.findAll({ order: [['name', 'ASC']] });
-  res.json(facilities);
+
+// -------------------- 404 handler (ALWAYS LAST) --------------------
+app.use((req, res) => {
+  res.status(404).json({ error: "Halaman tidak ditemukan" });
 });
 // Start server
 sequelize.authenticate()
   .then(() => {
-    console.log(' Database terkoneksi (Sequelize)');
-    app.listen(PORT, () => console.log(` Server berjalan di http://localhost:${PORT}`));
+    console.log('Database terkoneksi (Sequelize)');
+    app.listen(PORT, () => console.log(`Server berjalan di http://localhost:${PORT}`));
   })
   .catch(err => console.error('Gagal koneksi database:', err));
