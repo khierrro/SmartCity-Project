@@ -1,89 +1,92 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title id="pageTitle">Login - Smart City</title>
+  <!DOCTYPE html>
+  <html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title id="pageTitle">Login - Smart City</title>
 
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-  />
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
-  <link rel="stylesheet" href="../css/default.css" />
-  <link rel="stylesheet" href="../css/login.css" />
-</head>
-<body>
-  <nav class="navbar bg-body-tertiary">
-    <div class="container-fluid justify-content-center">
-      <p class="navbar-brand mb-0 h1 fw-bolder">
-        SMART <span class="text-primary">CITY</span>
-      </p>
-    </div>
-  </nav>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/default.css" />
+    <link rel="stylesheet" href="../css/login.css" />
+  </head>
+  <body>
+    <nav class="navbar bg-body-tertiary">
+      <div class="container-fluid justify-content-center">
+        <p class="navbar-brand mb-0 h1 fw-bolder">
+          SMART <span class="text-primary">CITY</span>
+        </p>
+      </div>
+    </nav>
 
-  <main class="container">
-    <h3 id="loginTitle" class="text-center mb-5 fw-bold">LOGIN</h3>
+    <main class="container">
+      <h3 id="loginTitle" class="text-center mb-5 fw-bold">LOGIN</h3>
 
-    <section class="card shadow">
-      <div class="row g-0">
-        <!-- Kiri: form login -->
-        <div id="leftPanel" class="col-md-6 p-4 border-end">
-          <div class="d-flex justify-content-center align-items-center mb-3">
-            <i id="userIcon" class="fa-solid fa-circle-user fa-3x"></i>
+      <section class="card shadow">
+        <div class="row g-0">
+          <!-- Kiri: form login -->
+          <div id="leftPanel" class="col-md-6 p-4 border-end">
+            <div class="d-flex justify-content-center align-items-center mb-3">
+              <i id="userIcon" class="fa-solid fa-circle-user fa-3x"></i>
+            </div>
+
+            <form id="loginForm">
+              <div class="mb-3">
+                <label>Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  class="form-control"
+                  placeholder="Masukkan Email"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label>Password</label>
+                <input
+                  type="password"
+                  id="password"
+                  class="form-control"
+                  placeholder="Masukkan Password"
+                  required
+                />
+              </div>
+
+              <button type="submit" id="loginButton" class="btn w-100 mb-2">
+                Login
+              </button>
+            </form>
           </div>
 
-          <form id="loginForm">
-            <div class="mb-3">
-              <label>Email</label>
-              <input
-                type="email"
-                id="email"
-                class="form-control"
-                placeholder="Masukkan Email"
-                required
-              />
-            </div>
-            <div class="mb-3">
-              <label>Password</label>
-              <input
-                type="password"
-                id="password"
-                class="form-control"
-                placeholder="Masukkan Password"
-                required
-              />
-            </div>
+          <!-- Kanan: informasi tambahan -->
+          <div
+            id="rightPanel"
+            class="col-md-6 p-4 d-flex justify-content-center align-items-center flex-column"
+          >
+            <h3 id="rightTitle" class="text-center fw-bold">BELUM PUNYA AKUN?</h3>
+            <p id="rightText">Daftar sekarang dan mulai gunakan layanan kami!</p>
+            <a id="registerLink" class="btn btn-outline-primary" href="register.html">REGISTER</a>
+            <div class="text-center mt-3">
+  </div>
+          </div>
 
-            <button type="submit" id="loginButton" class="btn w-100 mb-2">
-              Login
-            </button>
-          </form>
         </div>
+      </section>
+    </main>
 
-        <!-- Kanan: informasi tambahan -->
-        <div
-          id="rightPanel"
-          class="col-md-6 p-4 d-flex justify-content-center align-items-center flex-column"
-        >
-          <h3 id="rightTitle" class="text-center fw-bold">BELUM PUNYA AKUN?</h3>
-          <p id="rightText">Daftar sekarang dan mulai gunakan layanan kami!</p>
-          <a id="registerLink" class="btn btn-outline-primary" href="register.html">REGISTER</a>
-        </div>
-      </div>
-    </section>
-  </main>
+    <footer>
+      <p class="text-center">
+        @ 2026 Smart City Pengaduan. All rights reserved.
+      </p>
+    </footer>
 
-  <footer>
-    <p class="text-center">
-      @ 2026 Smart City Pengaduan. All rights reserved.
-    </p>
-  </footer>
-
-  <!-- Login logic (dari file terpisah) -->
-  <script src="../js/login.js"></script>
-</body>
-</html>
+    <!-- Login logic (dari file terpisah) -->
+    <script src="../js/login.js"></script>
+  </body>
+  </html>

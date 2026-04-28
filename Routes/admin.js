@@ -9,6 +9,7 @@ const User = db.users;
 const Report = db.Report;
 const Facility = db.Facility;
 const sequelize = db.sequelize; 
+const ReportFlag = db.ReportFlag;
 
 // ---------- Image upload config ----------
 const storage = multer.diskStorage({

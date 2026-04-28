@@ -1,4 +1,6 @@
 // public/script/login.js
+'use strict';
+
 const roleConfig = {
   citizen: {
     pageTitle: "Login Warga - Smart City",
@@ -30,15 +32,37 @@ const config = roleConfig[role] || roleConfig.citizen;
 document.getElementById("pageTitle").textContent = config.pageTitle;
 document.getElementById("loginTitle").textContent = config.loginTitle;
 document.getElementById("userIcon").className = config.userIcon;
-document.getElementById("loginButton").className = "btn w-100 mb-2 " + config.buttonClass;
+document.getElementById("loginButton").className = `btn w-100 mb-2 ${config.buttonClass}`;
 document.getElementById("rightTitle").textContent = config.rightTitle;
 document.getElementById("rightText").textContent = config.rightText;
+
 const registerLink = document.getElementById("registerLink");
-registerLink.style.display = config.showRegister ? "inline-block" : "none";
+if (config.showRegister) {
+  registerLink.style.display = "inline-block";
+} else {
+  registerLink.style.display = "none";
+}
+
+// Jika admin, tambahkan tautan "Warga? Login di sini" di bawah tombol
+if (role === 'admin') {
+  const link = document.createElement('p');
+  link.className = 'text-center mt-2';
+  link.innerHTML = '<small><a href="/login.html" class="text-muted">Warga? Login di sini</a></small>';
+  document.querySelector('#leftPanel form').appendChild(link);
+} else {
+  // Jika warga, tambahkan tautan "Admin? Login di sini"
+  const link = document.createElement('p');
+  link.className = 'text-center mt-2';
+  link.innerHTML = '<small><a href="/login.html?role=admin" class="text-muted">Admin? Login di sini</a></small>';
+  document.querySelector('#leftPanel form').appendChild(link);
+}
 
 const leftPanel = document.getElementById("leftPanel");
-if (config.leftPanelClass) leftPanel.classList.add(config.leftPanelClass);
+if (config.leftPanelClass) {
+  leftPanel.classList.add(config.leftPanelClass);
+}
 
+// Form submit
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -53,7 +77,6 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     });
 
     const data = await res.json();
-    alert(data.message);
 
     if (res.ok) {
       localStorage.setItem("user", JSON.stringify(data.user));
@@ -63,6 +86,8 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
       } else {
         window.location.href = "/pages/menu.html";
       }
+    } else {
+      alert(data.message || "Login gagal");
     }
   } catch (err) {
     console.error(err);

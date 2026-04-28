@@ -4,7 +4,6 @@ const isAuth = require('../middleware/isAuth');
 const Report = require('../models/Reports');
 const ReportFlag = require('../models/ReportFlag');
 
-// POST /api/reports/:id/flag  (citizen flag a report)
 router.post('/:id/flag', isAuth, async (req, res) => {
   try {
     const report = await Report.findByPk(req.params.id);
@@ -12,6 +11,7 @@ router.post('/:id/flag', isAuth, async (req, res) => {
 
     const reason = req.body.reason?.trim() || null;
 
+    // Try to create – unique constraint prevents duplicates
     try {
       await ReportFlag.create({
         user_id:   req.user.id,

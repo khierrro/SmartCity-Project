@@ -232,4 +232,10 @@ async function loadNotifications() {
   } catch (err) {
     console.error('Gagal memuat notifikasi', err);
   }
+};
+async function logout() {
+  try {
+    await fetch('/logout', { method: 'POST' });
+  } catch (e) { }
+  window.location.href = '/index.html';
 }

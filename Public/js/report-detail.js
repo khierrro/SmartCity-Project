@@ -2,116 +2,196 @@
 const API = '/api';
 let reportId = null;
 let currentUser = null;
-let reportData = null;
+let replyToId = null;
 
-async function apiFetch(url, options = {}) {
-  const res = await fetch(url, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-  });
+const apiFetch = async (url, options = {}) => {
+  const res = await fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
   const data = await res.json();
   if (!data?.success && res.status === 401) {
     window.location.href = '/login.html?role=citizen';
     return null;
   }
   return data;
-}
+};
+
+const fmtDate = d => d ? new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // get report id from URL
   const params = new URLSearchParams(window.location.search);
   reportId = params.get('id');
-  if (!reportId) {
-    window.location.href = '/pages/reports.html';
-    return;
-  }
+  if (!reportId) return window.location.href = '/pages/reports.html';
 
-  // user info
   try {
     const me = await apiFetch('/me');
-    if (me && me.loggedIn) {
-      currentUser = me;
-      document.getElementById('userName').textContent = me.name;
-      document.getElementById('commentForm').classList.remove('hidden');
-    }
+    if (me && me.loggedIn) currentUser = me;
   } catch (_) {}
 
   await loadReport();
   await loadComments();
 
-  // event listeners
-  document.getElementById('submitCommentBtn').addEventListener('click', submitComment);
-  document.getElementById('cancelReplyBtn').addEventListener('click', cancelReply);
+  document.getElementById('submitCommentBtn')?.addEventListener('click', submitComment);
+  document.getElementById('cancelReplyBtn')?.addEventListener('click', cancelReply);
+  document.getElementById('confirmFlagBtn')?.addEventListener('click', flagReport);
 });
 
 async function loadReport() {
-  const container = document.getElementById('reportContainer');
+  const cont = document.getElementById('reportContainer');
   try {
     const data = await apiFetch(`${API}/reports/${reportId}`);
-    if (!data) return;
-    reportData = data.data;
-
-    const r = reportData;
+    if (!data) return cont.innerHTML = '<p class="text-danger">Gagal memuat laporan.</p>';
+    const r = data.data;
     const isAdmin = currentUser?.role === 'admin';
 
-    container.innerHTML = `
-      <div class="flex justify-between items-start mb-4">
-        <h1 class="text-2xl font-bold">${esc(r.title)}</h1>
-        <span class="px-2 py-0.5 rounded-full text-xs ${STATUS_BADGE[r.status]}">${r.status}</span>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
-        <p><strong>Pelapor:</strong> ${esc(r.reporter)}</p>
-        <p><strong>Fasilitas:</strong> ${esc(r.facility || '-')}</p>
-        <p><strong>Lokasi:</strong> ${esc(r.location_text || '-')}</p>
-        <p><strong>Tanggal:</strong> ${fmtDate(r.created_at)}</p>
-        <p><strong>Vote:</strong> <span id="voteCountDisplay">${r.vote_count}</span></p>
-      </div>
-      <div class="mb-4">
-        <h2 class="text-lg font-semibold mb-2">Deskripsi</h2>
-        <p class="text-gray-700 whitespace-pre-line">${esc(r.description)}</p>
-      </div>
-      ${r.image_path ? `<img src="${r.image_path}" class="rounded-lg max-h-72 object-cover w-full mb-4">` : ''}
+    const statusBadge = {
+      new: 'bg-primary', in_progress: 'bg-warning text-dark', resolved: 'bg-success', hidden: 'bg-secondary'
+    };
 
-      <!-- Role-based actions -->
-      <div class="flex gap-2 mt-4">
+    // Prepare flag list HTML for admin
+    let flagListHtml = '';
+    if (isAdmin && r.flags) {
+      if (r.flags.length === 0) {
+        flagListHtml = '<p class="text-muted mt-2">Belum ada tanda.</p>';
+      } else {
+        flagListHtml = `
+          <div class="mt-3">
+            <h6><i class="fas fa-flag"></i> Daftar Tanda</h6>
+            <ul class="list-group list-group-flush">
+              ${r.flags.map(f => `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>${esc(f.user_name)}</strong>
+                    <p class="mb-0 text-muted small">${esc(f.reason)}</p>
+                  </div>
+                  <small class="text-muted">${fmtDate(f.created_at)}</small>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        `;
+      }
+    }
+
+    // Show comment form only if allowed
+    if (r.can_comment) {
+      document.getElementById('commentForm').style.display = 'block';
+    }
+
+    cont.innerHTML = `
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <h2 class="fw-bold">${esc(r.title)}</h2>
+        <span class="badge ${statusBadge[r.status] || 'bg-secondary'}">${r.status}</span>
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-6"><strong>Pelapor:</strong> ${esc(r.reporter)}</div>
+        <div class="col-md-6"><strong>Fasilitas:</strong> ${esc(r.facility || '-')}</div>
+        <div class="col-md-6"><strong>Lokasi:</strong> ${esc(r.location_text || '-')}</div>
+        <div class="col-md-6"><strong>Tanggal:</strong> ${fmtDate(r.created_at)}</div>
+        <div class="col-md-3"><strong>👍 Vote:</strong> <span id="voteCountDisplay">${r.vote_count}</span></div>
+        <div class="col-md-3"><strong>🚩 Flag:</strong> <span id="flagCountDisplay">${r.flag_count || 0}</span></div>
+      </div>
+      <h5>Deskripsi</h5>
+      <p class="text-muted">${esc(r.description)}</p>
+      ${r.image_path ? `<img src="${r.image_path}" class="img-fluid rounded mb-3" style="max-height:300px;">` : ''}
+
+      ${flagListHtml}
+
+      <div class="d-flex gap-2 mt-3">
         ${isAdmin ? `
-          <select id="adminStatusSelect" class="border rounded px-2 py-1 text-sm">
+          <select id="adminStatusSelect" class="form-select w-auto">
             <option value="new" ${r.status==='new'?'selected':''}>Baru</option>
             <option value="in_progress" ${r.status==='in_progress'?'selected':''}>Diproses</option>
             <option value="resolved" ${r.status==='resolved'?'selected':''}>Selesai</option>
             <option value="hidden" ${r.status==='hidden'?'selected':''}>Tersembunyi</option>
           </select>
-          <button id="saveStatusBtn" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Simpan Status</button>
-          <button id="deleteReportBtn" class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">Hapus</button>
+          <button id="saveStatusBtn" class="btn btn-sm btn-primary">Simpan Status</button>
+          <button id="deleteReportBtn" class="btn btn-sm btn-danger">Hapus</button>
         ` : ''}
         ${currentUser && !isAdmin ? `
-          <button id="voteBtn" class="px-4 py-2 rounded text-sm ${r.hasVoted ? 'bg-green-600 text-white' : 'bg-blue-100 text-blue-700'}">
+          <button id="voteBtn" class="btn btn-sm ${r.hasVoted ? 'btn-success' : 'btn-outline-primary'}">
             <i class="fas fa-thumbs-up"></i> ${r.hasVoted ? 'Anda Mendukung' : 'Dukung'}
           </button>
-          <button id="flagBtn" class="px-4 py-2 rounded text-sm bg-yellow-100 text-yellow-700">
-            <i class="fas fa-flag"></i> ${r.flagged ? 'Telah Ditandai' : 'Tandai Laporan'}
+          <button id="flagBtn" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#flagModal">
+            <i class="fas fa-flag"></i> ${r.flagged ? 'Telah Ditandai' : 'Tandai'}
           </button>
-          <input type="text" id="flagReasonInput" placeholder="Alasan tandai (opsional)" class="border rounded px-2 py-1 text-sm" />
         ` : ''}
       </div>
     `;
 
-    // Admin actions
     if (isAdmin) {
       document.getElementById('saveStatusBtn').addEventListener('click', saveStatus);
       document.getElementById('deleteReportBtn').addEventListener('click', deleteReport);
     }
-
-    // Citizen actions
     if (currentUser && !isAdmin) {
       document.getElementById('voteBtn').addEventListener('click', toggleVote);
-      document.getElementById('flagBtn').addEventListener('click', flagReport);
     }
   } catch (err) {
-    container.innerHTML = '<p class="text-red-500">Gagal memuat laporan</p>';
+    cont.innerHTML = '<p class="text-danger">Gagal memuat laporan.</p>';
+  }
+}
+// ---------- admin actions ----------
+async function saveStatus() {
+  const status = document.getElementById('adminStatusSelect').value;
+  await apiFetch(`${API}/reports/${reportId}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
+  loadReport();
+}
+async function deleteReport() {
+  if (!confirm('Hapus laporan ini?')) return;
+  await apiFetch(`${API}/reports/${reportId}`, { method: 'DELETE' });
+  window.location.href = 'reports.html';
+}
+
+// ---------- citizen actions ----------
+async function toggleVote() {
+  const data = await apiFetch(`${API}/reports/${reportId}/vote`, { method: 'POST' });
+  if (!data) return;
+  document.getElementById('voteCountDisplay').textContent = data.vote_count;
+  const btn = document.getElementById('voteBtn');
+  if (data.voted) {
+    btn.className = 'btn btn-sm btn-success';
+    btn.innerHTML = '<i class="fas fa-thumbs-up"></i> Anda Mendukung';
+  } else {
+    btn.className = 'btn btn-sm btn-outline-primary';
+    btn.innerHTML = '<i class="fas fa-thumbs-up"></i> Dukung';
   }
 }
 
+async function flagReport() {
+  const reason = document.getElementById('flagReasonModal').value.trim();
+  const btn = document.getElementById('confirmFlagBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menandai...';
+
+  try {
+    const res = await fetch(`/api/reports/${reportId}/flag`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      // Increase flag count on page
+      const flagCountEl = document.getElementById('flagCountDisplay');
+      flagCountEl.textContent = parseInt(flagCountEl.textContent) + 1;
+      // Change flag button appearance
+      const flagBtn = document.getElementById('flagBtn');
+      flagBtn.innerHTML = '<i class="fas fa-flag"></i> Telah Ditandai';
+      flagBtn.classList.remove('btn-outline-warning');
+      flagBtn.classList.add('btn-outline-danger');
+      // Hide modal
+      bootstrap.Modal.getInstance(document.getElementById('flagModal')).hide();
+    } else {
+      alert(data.message || 'Gagal menandai laporan');
+    }
+  } catch (err) {
+    alert('Gagal terhubung ke server');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-flag"></i> Tandai';
+  }
+}
+// ---------- comments ----------
 async function loadComments() {
   const list = document.getElementById('commentsList');
   try {
@@ -119,133 +199,62 @@ async function loadComments() {
     const comments = data?.data || [];
     document.getElementById('commentCount').textContent = `(${comments.length})`;
     if (comments.length === 0) {
-      list.innerHTML = '<p class="text-gray-500 text-sm">Belum ada komentar.</p>';
+      list.innerHTML = '<p class="text-muted">Belum ada komentar.</p>';
       return;
     }
     list.innerHTML = comments.map(c => renderComment(c)).join('');
-    // bind reply buttons
     document.querySelectorAll('.reply-btn').forEach(btn => {
       btn.addEventListener('click', () => startReply(btn.dataset.id, btn.dataset.name));
     });
   } catch (err) {
-    list.innerHTML = '<p class="text-red-500">Gagal memuat komentar</p>';
+    list.innerHTML = '<p class="text-danger">Gagal memuat komentar.</p>';
   }
 }
 
 function renderComment(c, depth = 0) {
   const replies = (c.Replies || []).map(r => renderComment(r, depth + 1)).join('');
   return `
-    <div class="ml-${depth * 4} border-l-2 border-gray-100 pl-3 mb-3">
-      <div class="bg-gray-50 rounded p-3">
-        <p class="text-sm font-semibold">${esc(c.Author?.name || 'Anonim')}</p>
-        <p class="text-sm text-gray-700">${esc(c.content)}</p>
-        <p class="text-xs text-gray-400 mt-1">${fmtDate(c.created_at)}</p>
-        <div class="flex gap-3 mt-2 text-xs">
-          <button class="reply-btn text-blue-500 hover:underline" data-id="${c.id}" data-name="${esc(c.Author?.name || 'Anonim')}">Balas</button>
-          ${c.is_edited ? '<span class="text-gray-400 italic">(diedit)</span>' : ''}
+    <div class="ms-${depth * 3} border-start border-2 ps-3 mb-3">
+      <div class="bg-light rounded p-2">
+        <div class="d-flex justify-content-between small">
+          <strong>${esc(c.Author?.name || 'Anonim')}</strong>
+          <span class="text-muted">${fmtDate(c.created_at)}</span>
         </div>
+        <p class="mb-1 small">${esc(c.content)}</p>
+        <button class="reply-btn btn btn-link btn-sm p-0" data-id="${c.id}" data-name="${esc(c.Author?.name || 'Anonim')}">Balas</button>
       </div>
       ${replies}
     </div>
   `;
 }
 
-let replyToId = null;
-function startReply(commentId, authorName) {
-  replyToId = commentId;
-  document.getElementById('commentInput').placeholder = `Membalas ${authorName}`;
-  document.getElementById('cancelReplyBtn').classList.remove('hidden');
+function startReply(id, name) {
+  replyToId = id;
+  document.getElementById('commentInput').placeholder = `Balas ${name}...`;
+  document.getElementById('cancelReplyBtn').style.display = 'inline-block';
   document.getElementById('commentInput').focus();
 }
 
 function cancelReply() {
   replyToId = null;
   document.getElementById('commentInput').placeholder = 'Tulis komentar...';
-  document.getElementById('cancelReplyBtn').classList.add('hidden');
+  document.getElementById('cancelReplyBtn').style.display = 'none';
 }
 
 async function submitComment() {
   const content = document.getElementById('commentInput').value.trim();
   if (!content) return;
-
   const body = { content };
   if (replyToId) body.parent_id = replyToId;
-
-  try {
-    const data = await apiFetch(`${API}/reports/${reportId}/comments`, {
-      method: 'POST',
-      body: JSON.stringify(body)
-    });
-    if (data?.success) {
-      document.getElementById('commentInput').value = '';
-      if (replyToId) cancelReply();
-      loadComments();
-    }
-  } catch (err) {
-    alert('Gagal mengirim komentar');
-  }
-}
-
-// Admin actions
-async function saveStatus() {
-  const status = document.getElementById('adminStatusSelect').value;
-  const data = await apiFetch(`${API}/reports/${reportId}/status`, {
-    method: 'PUT',
-    body: JSON.stringify({ status })
-  });
-  if (data?.success) {
-    // update badge
-    reportData.status = status;
-    const badge = document.querySelector(`#reportContainer span`);
-    if (badge) badge.className = `px-2 py-0.5 rounded-full text-xs ${STATUS_BADGE[status]}`;
-    badge.textContent = status;
-  }
-}
-
-async function deleteReport() {
-  if (!confirm('Hapus permanen?')) return;
-  const data = await apiFetch(`${API}/reports/${reportId}`, { method: 'DELETE' });
-  if (data?.success) {
-    alert('Laporan dihapus');
-    window.location.href = '/pages/admin.html';
-  }
-}
-
-// Citizen actions
-async function toggleVote() {
-  const data = await apiFetch(`${API}/reports/${reportId}/vote`, { method: 'POST' });
-  if (!data) return;
-  reportData.hasVoted = data.voted;
-  reportData.vote_count = data.vote_count;
-  document.getElementById('voteCountDisplay').textContent = data.vote_count;
-  const btn = document.getElementById('voteBtn');
-  if (data.voted) {
-    btn.className = 'px-4 py-2 rounded text-sm bg-green-600 text-white';
-    btn.innerHTML = '<i class="fas fa-thumbs-up"></i> Anda Mendukung';
-  } else {
-    btn.className = 'px-4 py-2 rounded text-sm bg-blue-100 text-blue-700';
-    btn.innerHTML = '<i class="fas fa-thumbs-up"></i> Dukung';
-  }
-}
-
-async function flagReport() {
-  const reason = document.getElementById('flagReasonInput')?.value?.trim() || '';
-  const data = await apiFetch(`${API}/reports/${reportId}/flag`, {
+  const data = await apiFetch(`${API}/reports/${reportId}/comments`, {
     method: 'POST',
-    body: JSON.stringify({ reason })
+    body: JSON.stringify(body)
   });
   if (data?.success) {
-    alert('Laporan telah ditandai');
-    document.getElementById('flagBtn').innerHTML = '<i class="fas fa-flag"></i> Telah Ditandai';
-    document.getElementById('flagBtn').classList.add('bg-red-100', 'text-red-700');
+    document.getElementById('commentInput').value = '';
+    cancelReply();
+    loadComments();
+  } else {
+    alert(data?.message || 'Gagal');
   }
 }
-
-const STATUS_BADGE = {
-  new:         'bg-blue-100 text-blue-700',
-  in_progress: 'bg-yellow-100 text-yellow-700',
-  resolved:    'bg-green-100 text-green-700',
-  hidden:      'bg-gray-200 text-gray-600',
-};
-function fmtDate(d) { return d ? new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-'; }
-function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

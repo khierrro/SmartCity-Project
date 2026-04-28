@@ -1,119 +1,127 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel Admin - Smart City</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <link rel="stylesheet" href="/css/admin.css">
-</head>
-<body class="bg-gray-100">
+  <!DOCTYPE html>
+  <html lang="id">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - Smart City</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/css/admin.css">
+  </head>
+  <body class="bg-gray-100">
 
-<!-- Navbar -->
-<!-- Navbar (excerpt) -->
-<nav class="bg-white shadow p-4 mb-6">
-  <div class="container mx-auto flex justify-between items-center">
-    <a href="/pages/admin.html" class="text-xl font-bold text-gray-800"><i class="fas fa-shield-alt text-blue-600"></i> Admin Panel</a>
-    <div class="flex space-x-4 text-sm">
-      <a href="/pages/admin-search.html" class="hover:text-blue-600"><i class="fas fa-search"></i> Cari Laporan</a>
-      <a href="/pages/admin-facility-search.html" class="hover:text-blue-600"><i class="fas fa-building"></i> Cari Fasilitas</a>
-    </div>
-    <div class="flex items-center space-x-4">
-      <!-- Notification Bell -->
-      <div class="relative">
-        <button id="notificationBell" class="text-gray-600 hover:text-blue-600 focus:outline-none">
-          <i class="far fa-bell text-xl"></i>
-          <span id="notificationCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
-        </button>
-        <!-- Notification Dropdown -->
-        <div id="notificationDropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border hidden z-50">
-          <div class="p-3 border-b flex justify-between items-center">
-            <h3 class="font-semibold">Notifikasi</h3>
-            <button id="markAllReadBtn" class="text-xs text-blue-600 hover:underline">Tandai semua sudah dibaca</button>
-          </div>
-          <div class="max-h-60 overflow-y-auto" id="notificationList">
-            <p class="text-center text-gray-500 p-4">Memuat...</p>
+  <!-- Navbar -->
+  <!-- Navbar (excerpt) -->
+  <nav class="bg-white shadow p-4 mb-6">
+    <div class="container mx-auto flex justify-between items-center">
+      <a href="/pages/admin.html" class="text-xl font-bold text-gray-800"><i class="fas fa-shield-alt text-blue-600"></i> Admin Panel</a>
+      <div class="flex space-x-4 text-sm">
+        <a href="/pages/admin-search.html" class="hover:text-blue-600"><i class="fas fa-search"></i> Cari Laporan</a>
+        <a href="/pages/admin-facility-search.html" class="hover:text-blue-600"><i class="fas fa-building"></i> Cari Fasilitas</a>
+      </div>
+      <div class="flex items-center space-x-4">
+        <!-- Notification Bell -->
+        <div class="relative">
+          <button id="notificationBell" class="text-gray-600 hover:text-blue-600 focus:outline-none">
+            <i class="far fa-bell text-xl"></i>
+            <span id="notificationCount" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+          </button>
+          <!-- Notification Dropdown -->
+          <div id="notificationDropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border hidden z-50">
+            <div class="p-3 border-b flex justify-between items-center">
+              <h3 class="font-semibold">Notifikasi</h3>
+              <button id="markAllReadBtn" class="text-xs text-blue-600 hover:underline">Tandai semua sudah dibaca</button>
+            </div>
+            <div class="max-h-60 overflow-y-auto" id="notificationList">
+              <p class="text-center text-gray-500 p-4">Memuat...</p>
+            </div>
           </div>
         </div>
-      </div>
-      <!-- Admin info -->
-      <div class="text-sm" id="adminInfo">Admin: <span id="adminName">...</span></div>
-    </div>
+        <!-- Admin info -->
+        <div class="flex items-center space-x-3">
+    <span class="text-sm">Admin: <span id="adminName">...</span></span>
+    <button onclick="logout()" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+      <i class="fas fa-sign-out-alt"></i> Logout
+    </button>
   </div>
-</nav>
-
-<div class="container mx-auto p-6">
-  <!-- ==================== DASHBOARD STATISTIK ==================== -->
-  <div class="bg-white rounded-lg shadow-md p-5 mb-8">
-    <h2 class="text-xl font-semibold mb-4 border-l-4 border-blue-500 pl-3"><i class="fas fa-chart-line"></i> Dashboard</h2>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="bg-blue-50 p-4 rounded"><div class="text-2xl font-bold text-blue-700" id="statTotal">0</div><div class="text-gray-600">Total</div></div>
-      <div class="bg-green-50 p-4 rounded"><div class="text-2xl font-bold text-green-700" id="statResolved">0</div><div class="text-gray-600">Selesai</div></div>
-      <div class="bg-yellow-50 p-4 rounded"><div class="text-2xl font-bold text-yellow-700" id="statInProgress">0</div><div class="text-gray-600">Diproses</div></div>
-      <div class="bg-gray-50 p-4 rounded"><div class="text-2xl font-bold text-gray-700" id="statHidden">0</div><div class="text-gray-600">Tersembunyi</div></div>
-    </div>
-  </div>
-
-  <!-- ==================== TOP 5 LAPORAN (toggleable) ==================== -->
-  <div class="bg-white rounded-lg shadow-md p-5 mb-8">
-    <div class="flex justify-between items-center mb-4">
-      <h3 class="font-semibold"><i class="fas fa-trophy text-yellow-500"></i> Top 5 Laporan</h3>
-      <div class="flex space-x-2">
-        <button id="topVotesBtn" class="px-3 py-1 rounded bg-blue-600 text-white text-sm">Berdasarkan Vote</button>
-        <button id="topRecentBtn" class="px-3 py-1 rounded bg-gray-300 text-gray-700 text-sm">Terbaru</button>
       </div>
     </div>
-    <div id="topReportsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-  </div>
+  </nav>
 
-  <!-- ==================== DAFTAR FASILITAS ==================== -->
-  <div class="bg-white rounded-lg shadow-md p-5 mb-8">
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold"><i class="fas fa-building"></i> Fasilitas</h2>
-      <button id="openAddFacilityModal" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"><i class="fas fa-plus"></i> Tambah</button>
-    </div>
-    <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gambar</th>
-            <th class="px-6 py-3 text-left">Nama</th>
-            <th class="px-6 py-3 text-left">Tipe</th>
-            <th class="px-6 py-3 text-left">Alamat</th>
-            <th class="px-6 py-3 text-left">Aksi</th>
-          </tr>
-        </thead>
-        <tbody id="facilityTableBody" class="bg-white divide-y divide-gray-200">
-          <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Memuat...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL Add/Edit Facility -->
-<div id="facilityModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-  <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
-    <h2 id="modalTitle" class="text-xl font-bold mb-4">Tambah Fasilitas</h2>
-    <form id="facilityForm" enctype="multipart/form-data">
-      <input type="hidden" id="facilityId" />
-      <div class="grid grid-cols-1 gap-4">
-        <div><label class="block text-sm font-medium">Nama</label><input type="text" id="facName" required class="mt-1 w-full border rounded px-2 py-1"></div>
-        <div><label class="block text-sm font-medium">Tipe</label><select id="facType" class="mt-1 w-full border rounded px-2 py-1"><option value="hospital">Rumah Sakit</option><option value="police">Polisi</option><option value="fire_station">Pemadam Kebakaran</option><option value="clinic">Klinik</option></select></div>
-        <div><label class="block text-sm font-medium">Alamat</label><textarea id="facAddress" rows="2" class="mt-1 w-full border rounded px-2 py-1"></textarea></div>
-        <div><label class="block text-sm font-medium">Telepon</label><input type="text" id="facPhone" class="mt-1 w-full border rounded px-2 py-1"></div>
-        <div><label class="block text-sm font-medium">Jam Operasional</label><input type="text" id="facHours" placeholder="08:00 - 20:00" class="mt-1 w-full border rounded px-2 py-1"></div>
-        <div><label class="block text-sm font-medium">Gambar</label><input type="file" id="facImage" accept="image/*" class="mt-1 w-full"></div>
+  <div class="container mx-auto p-6">
+    <!-- ==================== DASHBOARD STATISTIK ==================== -->
+    <div class="bg-white rounded-lg shadow-md p-5 mb-8">
+      <h2 class="text-xl font-semibold mb-4 border-l-4 border-blue-500 pl-3"><i class="fas fa-chart-line"></i> Dashboard</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-blue-50 p-4 rounded"><div class="text-2xl font-bold text-blue-700" id="statTotal">0</div><div class="text-gray-600">Total</div></div>
+        <div class="bg-green-50 p-4 rounded"><div class="text-2xl font-bold text-green-700" id="statResolved">0</div><div class="text-gray-600">Selesai</div></div>
+        <div class="bg-yellow-50 p-4 rounded"><div class="text-2xl font-bold text-yellow-700" id="statInProgress">0</div><div class="text-gray-600">Diproses</div></div>
+        <div class="bg-gray-50 p-4 rounded"><div class="text-2xl font-bold text-gray-700" id="statHidden">0</div><div class="text-gray-600">Tersembunyi</div></div>
       </div>
-      <div class="mt-4 flex justify-end space-x-2">
-        <button type="button" id="closeModalBtn" class="bg-gray-300 px-4 py-2 rounded">Batal</button>
-        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Simpan</button>
-      </div>
-    </form>
-  </div>
-</div>
+    </div>
 
-<script src="../js/admin.js"></script>
-</body>
-</html>
+    <!-- ==================== TOP 5 LAPORAN (toggleable) ==================== -->
+    <div class="bg-white rounded-lg shadow-md p-5 mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-semibold"><i class="fas fa-trophy text-yellow-500"></i> Top 5 Laporan</h3>
+        <div class="flex space-x-2">
+          <button id="topVotesBtn" class="px-3 py-1 rounded bg-blue-600 text-white text-sm">Berdasarkan Vote</button>
+          <button id="topRecentBtn" class="px-3 py-1 rounded bg-gray-300 text-gray-700 text-sm">Terbaru</button>
+        </div>
+      </div>
+      <div id="topReportsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+
+    <!-- ==================== DAFTAR FASILITAS ==================== -->
+    <div class="bg-white rounded-lg shadow-md p-5 mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold"><i class="fas fa-building"></i> Fasilitas</h2>
+        <button id="openAddFacilityModal" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"><i class="fas fa-plus"></i> Tambah</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Gambar</th>
+              <th class="px-6 py-3 text-left">Nama</th>
+              <th class="px-6 py-3 text-left">Tipe</th>
+              <th class="px-6 py-3 text-left">Alamat</th>
+              <th class="px-6 py-3 text-left">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="facilityTableBody" class="bg-white divide-y divide-gray-200">
+            <tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL Add/Edit Facility -->
+  <div id="facilityModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+      <h2 id="modalTitle" class="text-xl font-bold mb-4">Tambah Fasilitas</h2>
+      <form id="facilityForm" enctype="multipart/form-data">
+        <input type="hidden" id="facilityId" />
+        <div class="grid grid-cols-1 gap-4">
+          <div><label class="block text-sm font-medium">Nama</label><input type="text" id="facName" required class="mt-1 w-full border rounded px-2 py-1"></div>
+          <div><label class="block text-sm font-medium">Tipe</label><select id="facType" class="mt-1 w-full border rounded px-2 py-1"><option value="hospital">Rumah Sakit</option><option value="police">Polisi</option><option value="fire_station">Pemadam Kebakaran</option><option value="clinic">Klinik</option></select></div>
+          <div><label class="block text-sm font-medium">Alamat</label><textarea id="facAddress" rows="2" class="mt-1 w-full border rounded px-2 py-1"></textarea></div>
+          <div><label class="block text-sm font-medium">Telepon</label><input type="text" id="facPhone" class="mt-1 w-full border rounded px-2 py-1"></div>
+          <div><label class="block text-sm font-medium">Jam Operasional</label><input type="text" id="facHours" placeholder="08:00 - 20:00" class="mt-1 w-full border rounded px-2 py-1"></div>
+          <div><label class="block text-sm font-medium">Gambar</label><input type="file" id="facImage" accept="image/*" class="mt-1 w-full"></div>
+        </div>
+        <div class="mt-4 flex justify-end space-x-2">
+          <button type="button" id="closeModalBtn" class="bg-gray-300 px-4 py-2 rounded">Batal</button>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script src="../js/authguard.js"></script>
+  <script>
+    AdminGuard.protect();
+  </script>
+  <script src="../js/admin.js"></script>
+  </body>
+  </html>

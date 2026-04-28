@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laporan Publik - Smart City</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../css/default.css">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg sticky-top bg-white shadow" style="z-index:1000;">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="menu.html">SMART<span>CITY</span></a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mx-auto mb-2 gap-4">
+          <li class="nav-item"><a class="nav-link" href="menu.html">HOME</a></li>
+          <li class="nav-item"><a class="nav-link active" href="reports.html">LAPORAN</a></li>
+          <li class="nav-item"><a class="nav-link" href="facilities.html">FASILITAS</a></li>
+        </ul>
+        <div id="navbarRight"></div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <h2 class="text-center fw-bold mb-4">Laporan Warga</h2>
+
+    <!-- Search & Filter -->
+    <div class="card shadow-sm p-3 mb-4">
+      <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <input type="text" id="searchInput" class="form-control" placeholder="Cari judul, deskripsi, lokasi...">
+        </div>
+        <div class="col-md-2">
+          <select id="sortBy" class="form-select">
+            <option value="created_at">Tanggal</option>
+            <option value="vote_count">Vote</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <select id="sortOrder" class="form-select">
+            <option value="DESC">Terbaru</option>
+            <option value="ASC">Terlama</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button id="searchBtn" class="btn btn-primary w-100"><i class="fas fa-search"></i> Cari</button>
+        </div>
+        <div class="col-md-2">
+          <button id="resetBtn" class="btn btn-outline-secondary w-100"><i class="fas fa-redo"></i> Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daftar Laporan -->
+    <div id="reportList" class="row g-4">
+      <div class="col-12 text-center py-5 text-muted">
+        <i class="fas fa-spinner fa-spin fa-2x"></i> <p>Memuat laporan...</p>
+      </div>
+    </div>
+
+    <!-- Load More -->
+    <div class="text-center mt-4">
+      <button id="loadMoreBtn" class="btn btn-outline-primary" style="display:none;">
+        <i class="fas fa-chevron-down me-1"></i> Tampilkan lebih banyak
+      </button>
+    </div>
+  </main>
+
+  <footer class="text-center py-3 text-muted">@ 2026 Smart City Pengaduan.</footer>
+  <script src = "../js/navbar.js"></script>
+  <script src ="../js/reports.js"></script>
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

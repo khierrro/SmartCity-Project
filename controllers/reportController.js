@@ -1,12 +1,14 @@
 'use strict';
-const { Op }   = require('sequelize'); 
+const { Op } = require('sequelize');
 const db = require('../models');
-const Report    = db.Report;
-const User      = db.users;
-const Facility  = db.Facility;
-const ReportFlag = db.ReportFlag;   
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+const Report      = db.Report;
+const User        = db.users;
+const Facility    = db.Facility;
+const ReportFlag  = db.ReportFlag;
+const UserReportVote = db.UserReportVote || require('../models/UserReportVote');
+const sequelize   = db.sequelize;          // ← biar nggak undefined
+
 const VALID_STATUSES = ['new', 'in_progress', 'resolved', 'hidden'];
 const VALID_SORT     = ['created_at', 'updated_at', 'vote_count'];
 
@@ -21,6 +23,7 @@ function formatReport(r) {
     vote_count:    r.vote_count,
     flagged:       r.flagged,
     is_read:       r.is_read,
+    flag_count:    parseInt(r.get?.('flag_count')) || 0,
     reporter:      r.User     ? r.User.name     : 'Akun Dihapus',
     facility:      r.Facility ? r.Facility.name : null,
     facility_id:   r.facility_id,
@@ -29,24 +32,16 @@ function formatReport(r) {
   };
 }
 
-// ─── GET /api/reports/search ──────────────────────────────────────────────────
 const searchReports = async (req, res) => {
   try {
     const {
-      q           = '',
-      status      = '',
-      facility_id = '',
-      date_from   = '',
-      date_to     = '',
-      sort_by     = 'created_at',
-      order       = 'DESC',
-      page        = 1,
-      limit       = 10,
+      q = '', status = '', facility_id = '', flagged = '',
+      date_from = '', date_to = '', sort_by = 'created_at',
+      order = 'DESC', page = 1, limit = 10,
     } = req.query;
 
     const where = {};
 
-    // keyword search
     if (q.trim()) {
       where[Op.or] = [
         { title:         { [Op.like]: `%${q}%` } },
@@ -55,18 +50,16 @@ const searchReports = async (req, res) => {
       ];
     }
 
-    // status filter — admin sees all statuses including 'hidden'
     const isAdmin = req.user && req.user.role === 'admin';
     if (status && VALID_STATUSES.includes(status)) {
       where.status = status;
     } else if (!isAdmin) {
-      // citizen cannot see hidden reports
       where.status = { [Op.ne]: 'hidden' };
     }
 
     if (facility_id) where.facility_id = Number(facility_id);
+    if (flagged !== '') where.flagged = flagged === '1';
 
-    // date range
     if (date_from || date_to) {
       where.created_at = {};
       if (date_from) where.created_at[Op.gte] = new Date(date_from);
@@ -79,35 +72,60 @@ const searchReports = async (req, res) => {
 
     const sortField = VALID_SORT.includes(sort_by) ? sort_by : 'created_at';
     const sortDir   = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-    const pageNum   = Math.max(1, parseInt(page)  || 1);
+    const pageNum   = Math.max(1, parseInt(page) || 1);
     const limitNum  = Math.min(100, Math.max(1, parseInt(limit) || 10));
     const offset    = (pageNum - 1) * limitNum;
 
+    // 1) Fetch reports without flag aggregation
     const { count, rows } = await Report.findAndCountAll({
       where,
       include: [
         { model: User,     as: 'User', attributes: ['name'] },
         { model: Facility,             attributes: ['name'] },
       ],
-      order:  [[sortField, sortDir]],
-      limit:  limitNum,
+      order: [[sortField, sortDir]],
+      limit: limitNum,
       offset,
     });
+
+    // 2) Collect report IDs and fetch flag counts in one query
+    const reportIds = rows.map(r => r.id);
+    let flagCounts = {};
+    if (reportIds.length > 0) {
+      const flagRows = await ReportFlag.findAll({
+        attributes: ['report_id', [sequelize.fn('COUNT', 'report_id'), 'count']],
+        where: { report_id: { [Op.in]: reportIds } },
+        group: ['report_id'],
+        raw: true,
+      });
+      flagRows.forEach(f => { flagCounts[f.report_id] = f.count; });
+    }
+
+    // 3) Format data
+    const formatted = rows.map(r => ({
+      id:            r.id,
+      title:         r.title,
+      reporter:      r.User ? r.User.name : 'Akun Dihapus',
+      facility:      r.Facility ? r.Facility.name : '-',
+      status:        r.status,
+      vote_count:    r.vote_count,
+      flag_count:    parseInt(flagCounts[r.id]) || 0,
+      date:          r.created_at.toISOString().split('T')[0],
+      created_at:    r.created_at,
+    }));
 
     res.json({
       success:    true,
       total:      count,
       page:       pageNum,
       totalPages: Math.ceil(count / limitNum),
-      data:       rows.map(formatReport),
+      data:       formatted,
     });
   } catch (err) {
     console.error('searchReports error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-// ─── GET /api/reports/:id ─────────────────────────────────────────────────────
 const getReportById = async (req, res) => {
   try {
     const report = await Report.findByPk(req.params.id, {
@@ -123,23 +141,53 @@ const getReportById = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Laporan tidak tersedia' });
     }
 
-    res.json({ success: true, data: formatReport(report) });
+    const flagCount = await ReportFlag.count({ where: { report_id: report.id } });
+    let hasVoted = false;
+    if (req.user) {
+      const vote = await UserReportVote.findOne({ where: { user_id: req.user.id, report_id: report.id } });
+      hasVoted = !!vote;
+    }
+
+    const data = formatReport(report);
+    data.flag_count = flagCount;
+    data.hasVoted = hasVoted;
+
+    if (isAdmin) {
+      const flags = await ReportFlag.findAll({
+        where: { report_id: report.id },
+        include: [{ model: User, as: 'User', attributes: ['name'] }],
+        order: [['created_at', 'DESC']],
+      });
+      data.flags = flags.map(f => ({
+        user_name: f.User ? f.User.name : 'Akun Dihapus',
+        reason: f.reason || 'Tanpa alasan',
+        created_at: f.created_at,
+      }));
+      data.can_comment = false;
+    } else {
+      data.can_comment = (req.user != null);
+    }
+
+    res.json({ success: true, data });
   } catch (err) {
+    console.error('getReportById error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// ─── POST /api/reports ────────────────────────────────────────────────────────
+// createReport, updateStatus, deleteReport, toggleVote tetap seperti sebelumnya (pakai fungsi yang sudah ada)
 const createReport = async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ success: false, message: 'Silakan login' });
 
     const { title, description, facility_id, location_text } = req.body;
     if (!title || !description) {
-      return res.status(400).json({ success: false, message: 'title dan description wajib diisi' });
+      return res.status(400).json({ success: false, message: 'Judul dan deskripsi wajib diisi' });
     }
 
-    const image_path = req.file ? '/reports/' + req.file.filename : null;
+    // Path gambar (jika ada)
+    const image_path = req.file ? '/uploads/reports/' + req.file.filename : null;
+
     const report = await Report.create({
       user_id:       req.user.id,
       facility_id:   facility_id || null,
@@ -150,14 +198,14 @@ const createReport = async (req, res) => {
       status:        'new',
       is_read:       false,
     });
+
     res.status(201).json({ success: true, data: report });
   } catch (err) {
     console.error('createReport error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-// ─── PUT /api/reports/:id/status  (admin only) ───────────────────────────────
+// -------------------- updateStatus (admin only) --------------------
 const updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -175,7 +223,7 @@ const updateStatus = async (req, res) => {
   }
 };
 
-// ─── DELETE /api/reports/:id  (admin only) ───────────────────────────────────
+// -------------------- deleteReport (admin only) --------------------
 const deleteReport = async (req, res) => {
   try {
     const report = await Report.findByPk(req.params.id);
@@ -187,6 +235,8 @@ const deleteReport = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// -------------------- toggleVote (citizen) --------------------
 const toggleVote = async (req, res) => {
   try {
     const reportId = req.params.id;
@@ -194,10 +244,10 @@ const toggleVote = async (req, res) => {
 
     const existing = await UserReportVote.findOne({ where: { user_id: userId, report_id: reportId } });
     if (existing) {
-      await existing.destroy();   // trigger will decrement vote_count
+      await existing.destroy();
       res.json({ success: true, voted: false, vote_count: await getVoteCount(reportId) });
     } else {
-      await UserReportVote.create({ user_id: userId, report_id: reportId }); // trigger increments
+      await UserReportVote.create({ user_id: userId, report_id: reportId });
       res.json({ success: true, voted: true, vote_count: await getVoteCount(reportId) });
     }
   } catch (err) {
@@ -205,11 +255,9 @@ const toggleVote = async (req, res) => {
   }
 };
 
-// helper to get current vote_count
 async function getVoteCount(reportId) {
   const report = await Report.findByPk(reportId, { attributes: ['vote_count'] });
   return report?.vote_count || 0;
 }
-
 
 module.exports = { searchReports, getReportById, createReport, updateStatus, deleteReport, toggleVote };

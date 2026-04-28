@@ -52,8 +52,7 @@ app.use('/', authRoutes);
 
 // Citizen route for flagging (must be before report routes)
 const citizenFlagRoutes = require('./routes/citizenflag');
-app.use('/api/reports', citizenFlagRoutes);
-
+app.use('/api/reports', citizenFlagRoutes);   // <-- before reportRoutes
 // Admin routes
 const adminRoutes = require('./routes/admin');
 app.use('/api/admin', adminRoutes);
@@ -76,7 +75,94 @@ app.put('/api/comments/:id', isAuth, editComment);
 app.use((req, res) => {
   res.status(404).json({ error: "Halaman tidak ditemukan" });
 });
+// Halaman detail laporan – navbar dinamis, URL bersih
+app.get('/report-detail', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  const filePath = path.join(__dirname, 'public', 'pages', 'report-detail.html');
 
+  fs.readFile(filePath, 'utf8', (err, html) => {
+    if (err) return res.status(500).send('Error loading page');
+
+    let navbar = '';
+    const isAdmin = req.session.user && req.session.user.role === 'admin';
+    const isLoggedIn = !!req.session.user;
+
+    if (isAdmin) {
+      // Navbar ADMIN
+      navbar = `
+      <nav class="navbar navbar-expand-lg sticky-top bg-white shadow" style="z-index:1000;">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="/pages/admin.html">SMART<span>CITY</span></a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mx-auto mb-2 gap-4">
+              <li class="nav-item"><a class="nav-link" href="/pages/admin.html">DASHBOARD</a></li>
+              <li class="nav-item"><a class="nav-link active" href="/pages/admin-search.html">LAPORAN</a></li>
+              <li class="nav-item"><a class="nav-link" href="/pages/admin-facility-search.html">FASILITAS</a></li>
+            </ul>
+            <div class="d-flex align-items-center gap-2">
+              <span class="text-sm">Admin: ${req.session.user.name}</span>
+              <form action="/logout" method="POST" style="display:inline;">
+                <button type="submit" class="btn btn-outline-danger btn-sm">
+                  <i class="fas fa-sign-out-alt"></i> Keluar
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>`;
+    } else {
+      // Navbar WARGA / TAMU
+      navbar = `
+      <nav class="navbar navbar-expand-lg sticky-top bg-white shadow" style="z-index:1000;">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="/pages/menu.html">SMART<span>CITY</span></a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mx-auto mb-2 gap-4">
+              <li class="nav-item"><a class="nav-link" href="/pages/menu.html">HOME</a></li>
+              <li class="nav-item"><a class="nav-link active" href="/pages/reports.html">LAPORAN</a></li>
+              <li class="nav-item"><a class="nav-link" href="/pages/facilities.html">FASILITAS</a></li>
+            </ul>
+            <div id="navbarRight">`;
+      if (isLoggedIn) {
+        navbar += `
+              <span class="me-3">Halo, ${req.session.user.name}</span>
+              <a class="btn btn-outline-primary btn-sm" href="/pages/profile.html">
+                <i class="fa-regular fa-circle-user"></i> Profil
+              </a>
+              <form action="/logout" method="POST" style="display:inline;">
+                <button type="submit" class="btn btn-outline-danger btn-sm ms-2">
+                  <i class="fas fa-sign-out-alt"></i> Keluar
+                </button>
+              </form>`;
+      } else {
+        navbar += `
+              <a class="btn btn-outline-primary btn-sm" href="/login.html?role=citizen">Login</a>`;
+      }
+      navbar += `
+            </div>
+          </div>
+        </div>
+      </nav>`;
+    }
+
+    // Ganti placeholder dengan navbar
+    const result = html.replace('<!-- NAVBAR -->', navbar);
+    res.send(result);
+  });
+});
+// Public facilities list
+app.get('/api/facilities', async (req, res) => {
+  const Facility = require('./models/Facility');
+  const facilities = await Facility.findAll({ order: [['name', 'ASC']] });
+  res.json(facilities);
+});
 // Start server
 sequelize.authenticate()
   .then(() => {

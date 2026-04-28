@@ -75,6 +75,7 @@ function bindEvents() {
     document.getElementById('resultsBody').innerHTML = '';
     document.getElementById('resultCount').textContent = '';
     document.getElementById('loadMoreBtn').classList.add('hidden');
+    document.getElementById('flaggedFilter').checked = false;
   });
 
   document.getElementById('loadMoreBtn').addEventListener('click', () => {
@@ -116,6 +117,8 @@ async function doSearch(fresh = true) {
     document.getElementById('resultsBody').innerHTML = '<tr><td colspan="8" class="text-center py-6 text-red-500">Gagal memuat data</td></tr>';
     return;
   }
+  const flagged = document.getElementById('flaggedFilter')?.checked ? '1' : '';
+  if (flagged) params.set('flagged', flagged);
 
   document.getElementById('resultCount').textContent = `(${data.total} laporan)`;
 
@@ -173,7 +176,7 @@ function renderTable(reports) {
 
 // ── Go to detail (no redirect) ─────────────────────────
 function goToDetail(id) {
-  window.location.href = '/pages/report-detail.html?id=' + id;
+  window.location.href = '/pages/report-detail?id=' + id;
 }
 window.goToDetail = goToDetail;
 
@@ -200,4 +203,7 @@ async function viewFlags(reportId) {
   // Since the admin-search.html does not have a flag modal, just alert.
   alert('Flags:\n' + (flags.length ? flags.map(f => `${f.User?.name}: ${f.reason || '-'}`).join('\n') : 'No flags'));
 }
+const flagged = document.getElementById('flaggedFilter')?.checked ? '1' : '';
+if (flagged) params.set('flagged', flagged);
+
 window.viewFlags = viewFlags;

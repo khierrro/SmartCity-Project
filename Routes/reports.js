@@ -1,12 +1,23 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');                     // ← tambahkan
+const path = require('path');                         // ← tambahkan
 const isAuth = require('../middleware/isAuth');
 const isAdmin = require('../middleware/isAdmin');
 const reportController = require('../controllers/reportController');
-const { Report, Facility } = require('../models');   // ← tambahkan impor model
+const { Report, Facility } = require('../models');
 
-// ---------- RUTE STATIS (HARUS DI ATAS /:id) ----------
-router.get('/search',       isAuth, reportController.searchReports);
+// Konfigurasi penyimpanan gambar laporan
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/reports/'),  // folder di luar public
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, unique + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
+
+router.get('/search', reportController.searchReports);
 
 // Rute milik user yang login
 router.get('/my/stats', isAuth, async (req, res) => {
