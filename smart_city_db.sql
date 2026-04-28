@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Waktu pembuatan: 26 Apr 2026 pada 19.09
+-- Waktu pembuatan: 28 Apr 2026 pada 19.48
 -- Versi server: 10.4.32-MariaDB
 -- Versi PHP: 8.2.12
 
@@ -38,6 +38,17 @@ CREATE TABLE `comments` (
   `created_at` datetime DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `comments`
+--
+
+INSERT INTO `comments` (`id`, `report_id`, `user_id`, `parent_id`, `content`, `likes`, `is_edited`, `created_at`, `updated_at`) VALUES
+(1, 99, 16, NULL, 'hey tayo', 0, 0, '2026-04-28 12:56:41', '2026-04-28 12:56:41'),
+(2, 99, 16, 1, 'kontol kau', 0, 0, '2026-04-28 12:56:55', '2026-04-28 12:56:55'),
+(4, 109, 16, NULL, 'halo', 0, 0, '2026-04-28 15:47:19', '2026-04-28 15:47:19'),
+(5, 109, 16, NULL, 'gak ada orang', 0, 0, '2026-04-28 15:47:31', '2026-04-28 15:47:31'),
+(7, 110, 16, NULL, 'dww', 0, 0, '2026-04-28 16:05:23', '2026-04-28 16:05:23');
 
 -- --------------------------------------------------------
 
@@ -100,16 +111,17 @@ CREATE TABLE `reports` (
 --
 
 INSERT INTO `reports` (`id`, `user_id`, `facility_id`, `title`, `description`, `image_path`, `location_text`, `latitude`, `longitude`, `status`, `is_read`, `flagged`, `vote_count`, `created_at`, `updated_at`) VALUES
-(99, 12, 1, 'Lampu Jalan Mati di Depan RSUD', 'Lampu jalan utama depan RSUD sudah 3 hari mati, sangat gelap malam hari.', NULL, 'Jl. Kesehatan No.1', NULL, NULL, 'resolved', 1, 0, 15, '2026-04-20 09:15:00', '2026-04-26 09:34:09'),
+(99, 12, 1, 'Lampu Jalan Mati di Depan RSUD', 'Lampu jalan utama depan RSUD sudah 3 hari mati, sangat gelap malam hari.', NULL, 'Jl. Kesehatan No.1', NULL, NULL, 'hidden', 1, 1, 15, '2026-04-20 09:15:00', '2026-04-28 12:59:39'),
 (100, 13, NULL, 'Sampah Menumpuk di Pasar', 'Tumpukan sampah di belakang pasar tradisional sudah seminggu tidak diangkut.', NULL, 'Pasar Induk, Jl. Pasar Baru', NULL, NULL, 'in_progress', 1, 0, 8, '2026-04-21 10:30:00', '2026-04-25 20:12:21'),
 (101, 14, 2, 'Trotoar Rusak di Polresta', 'Trotoar di seberang Polresta ambles, membahayakan pejalan kaki.', NULL, 'Jl. Keamanan No.10', NULL, NULL, 'in_progress', 1, 0, 5, '2026-04-22 08:00:00', '2026-04-25 20:12:21'),
 (102, 15, NULL, 'Jembatan Retak di Desa', 'Jembatan kecil di desa retak cukup parah.', NULL, 'Desa Sukamaju', NULL, NULL, 'in_progress', 1, 0, 9, '2026-04-17 07:30:00', '2026-04-25 20:12:21'),
 (103, 12, 3, 'Kebakaran Lahan Kosong Dekat Pos Damkar', 'Lahan kosong belakang Pos Damkar terbakar semalam.', NULL, 'Belakang Pos Damkar', NULL, NULL, 'in_progress', 1, 0, 20, '2026-04-19 22:00:00', '2026-04-25 20:12:21'),
-(104, 13, 4, 'Parkir Liar di Depan RS', 'Kendaraan parkir sembarangan di depan RS Bhakti Husada.', NULL, 'Jl. Raya Barat No.25', NULL, NULL, 'resolved', 1, 0, 12, '2026-04-23 07:45:00', '2026-04-26 03:11:32'),
 (105, 14, 5, 'Vandalisme di Klinik', 'Dinding klinik dicorat-coret.', NULL, 'Klinik Pratama Sehat', NULL, NULL, 'hidden', 1, 0, 0, '2026-04-25 13:10:00', '2026-04-25 20:12:21'),
 (106, 12, 1, 'Pohon Tumbang di Halaman RSUD', 'Pohon besar tumbang akibat angin kencang.', NULL, 'Halaman RSUD Kota Sejahtera', NULL, NULL, 'in_progress', 1, 0, 30, '2026-04-18 16:20:00', '2026-04-26 03:11:32'),
 (107, 13, 6, 'Kebisingan di Polsek', 'Motor berknalpot bising di depan Polsek.', NULL, 'Jl. Anggrek No.17', NULL, NULL, 'in_progress', 1, 0, 6, '2026-04-25 21:00:00', '2026-04-25 20:12:21'),
-(108, 14, NULL, 'Saluran Air Tersumbat di Perumahan', 'Drainase tersumbat sampah plastik.', NULL, 'Komplek Griya Asri', NULL, NULL, 'in_progress', 1, 0, 3, '2026-04-24 11:00:00', '2026-04-25 20:12:21');
+(108, 14, NULL, 'Saluran Air Tersumbat di Perumahan', 'Drainase tersumbat sampah plastik.', NULL, 'Komplek Griya Asri', NULL, NULL, 'in_progress', 1, 0, 3, '2026-04-24 11:00:00', '2026-04-25 20:12:21'),
+(109, 16, 2, 'h3h3h3h3', 'ada kemalingan pagar besi wak', NULL, 'Jl. Keamanan No. 10, Kota Sejahtera', NULL, NULL, 'in_progress', 1, 0, 1, '2026-04-28 15:26:30', '2026-04-28 17:26:54'),
+(110, 16, 4, 'diddy', 'ada p diddy', NULL, 'Jl. Raya Barat No. 25, Kota Sejahtera', NULL, NULL, 'in_progress', 1, 0, 1, '2026-04-28 15:50:05', '2026-04-28 17:26:54');
 
 -- --------------------------------------------------------
 
@@ -124,6 +136,13 @@ CREATE TABLE `report_flags` (
   `reason` varchar(255) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `report_flags`
+--
+
+INSERT INTO `report_flags` (`id`, `user_id`, `report_id`, `reason`, `created_at`) VALUES
+(1, 16, 99, NULL, '2026-04-28 12:58:31');
 
 -- --------------------------------------------------------
 
@@ -151,7 +170,8 @@ INSERT INTO `users` (`id`, `name`, `email`, `password`, `phone`, `address`, `rol
 (12, 'Andi Wibowo', 'andi@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08123456789', 'Jl. Melati No.10', 'citizen', '2026-04-26 03:11:32'),
 (13, 'Siti Rahayu', 'siti@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08567812345', 'Jl. Anggrek No.5', 'citizen', '2026-04-26 03:11:32'),
 (14, 'Budi Santoso', 'budi@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08134567890', 'Jl. Mawar No.2', 'citizen', '2026-04-26 03:11:32'),
-(15, 'Dewi Lestari', 'dewi@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08215678901', 'Jl. Dahlia No.7', 'citizen', '2026-04-26 03:11:32');
+(15, 'Dewi Lestari', 'dewi@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08215678901', 'Jl. Dahlia No.7', 'citizen', '2026-04-26 03:11:32'),
+(16, 'Felix Arlen T', 'felixat31@gmail.com', '$2b$10$abQcqv6iyRcXL3g7lfIfceBR6e7PHFHsCuWvmhNx7aw1dL/QwNKPq', '089687563779', 'Jl. Thamrin No.76 c, Pandau Hulu I, Kec. Medan Kota, Kota Medan, Sumatera Utara 20211', 'citizen', '2026-04-27 16:12:28');
 
 -- --------------------------------------------------------
 
@@ -165,6 +185,14 @@ CREATE TABLE `user_report_votes` (
   `created_at` datetime DEFAULT current_timestamp(),
   `id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data untuk tabel `user_report_votes`
+--
+
+INSERT INTO `user_report_votes` (`user_id`, `report_id`, `created_at`, `id`) VALUES
+(16, 109, '2026-04-28 15:47:37', 1),
+(16, 110, '2026-04-28 16:08:15', 2);
 
 --
 -- Trigger `user_report_votes`
@@ -245,7 +273,7 @@ ALTER TABLE `user_report_votes`
 -- AUTO_INCREMENT untuk tabel `comments`
 --
 ALTER TABLE `comments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT untuk tabel `facilities`
@@ -257,25 +285,25 @@ ALTER TABLE `facilities`
 -- AUTO_INCREMENT untuk tabel `reports`
 --
 ALTER TABLE `reports`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=109;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=113;
 
 --
 -- AUTO_INCREMENT untuk tabel `report_flags`
 --
 ALTER TABLE `report_flags`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT untuk tabel `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT untuk tabel `user_report_votes`
 --
 ALTER TABLE `user_report_votes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)
