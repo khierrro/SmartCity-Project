@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fasilitas Publik – Smart City</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+  />
+  <style>
+    .facility-card {
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .facility-card:hover {
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+      transform: translateY(-2px);
+    }
+    .badge-hospital    { background-color: #dbeafe; color: #1d4ed8; }
+    .badge-police      { background-color: #dcfce7; color: #15803d; }
+    .badge-fire_station{ background-color: #fee2e2; color: #b91c1c; }
+    .badge-clinic      { background-color: #ede9fe; color: #6d28d9; }
+    .badge-default     { background-color: #f3f4f6; color: #374151; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="bg-white shadow-sm sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <!-- Brand -->
+      <a href="/pages/home.html" class="flex items-center gap-2 text-blue-600 font-bold text-xl">
+        <i class="fa-solid fa-city"></i>
+        <span>Smart City</span>
+      </a>
+
+      <!-- Nav links -->
+      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+        <a href="menu.html"    class="hover:text-blue-600 transition-colors">Menu</a>
+        <a href="reports.html"    class="hover:text-blue-600 transition-colors">Laporan</a>
+        <a href="facilities.html" class="text-blue-600 border-b-2 border-blue-600 pb-0.5">Fasilitas</a>
+      </div>
+
+      <!-- User info -->
+      <div id="userInfo" class="flex items-center gap-3 text-sm text-gray-600">
+        <span id="userName" class="hidden md:inline"></span>
+        <a
+          id="logoutBtn"
+          href="#"
+          class="hidden bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors text-xs font-medium"
+        >
+          <i class="fa-solid fa-right-from-bracket mr-1"></i>Keluar
+        </a>
+        <a
+          id="loginBtn"
+          href="/login.html"
+          class="hidden bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
+        >
+          Masuk
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== HEADER ===== -->
+  <header class="bg-blue-600 text-white py-10">
+    <div class="max-w-6xl mx-auto px-4">
+      <h1 class="text-3xl font-bold mb-2">
+        <i class="fa-solid fa-map-location-dot mr-3"></i>Direktori Fasilitas Publik
+      </h1>
+      <p class="text-blue-100 text-sm">
+        Temukan rumah sakit, klinik, kantor polisi, dan pemadam kebakaran di kotamu.
+      </p>
+
+      <!-- Filter bar -->
+      <div class="mt-6 flex flex-wrap gap-3">
+        <button
+          data-filter="all"
+          class="filter-btn active-filter px-4 py-2 rounded-full text-sm font-medium bg-white text-blue-600 shadow"
+        >
+          Semua
+        </button>
+        <button
+          data-filter="hospital"
+          class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-blue-500 text-white hover:bg-white hover:text-blue-600 transition-colors"
+        >
+          <i class="fa-solid fa-hospital mr-1"></i>Rumah Sakit
+        </button>
+        <button
+          data-filter="clinic"
+          class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-blue-500 text-white hover:bg-white hover:text-blue-600 transition-colors"
+        >
+          <i class="fa-solid fa-stethoscope mr-1"></i>Klinik
+        </button>
+        <button
+          data-filter="police"
+          class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-blue-500 text-white hover:bg-white hover:text-blue-600 transition-colors"
+        >
+          <i class="fa-solid fa-shield-halved mr-1"></i>Polisi
+        </button>
+        <button
+          data-filter="fire_station"
+          class="filter-btn px-4 py-2 rounded-full text-sm font-medium bg-blue-500 text-white hover:bg-white hover:text-blue-600 transition-colors"
+        >
+          <i class="fa-solid fa-fire-extinguisher mr-1"></i>Pemadam
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== MAIN ===== -->
+  <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
+
+    <!-- Search -->
+    <div class="mb-6">
+      <div class="relative max-w-md">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="Cari nama atau alamat fasilitas..."
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm"
+        />
+      </div>
+    </div>
+
+    <!-- Loading state -->
+    <div id="loadingState" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Skeleton cards -->
+      <div class="animate-pulse bg-white rounded-2xl overflow-hidden shadow h-64"></div>
+      <div class="animate-pulse bg-white rounded-2xl overflow-hidden shadow h-64"></div>
+      <div class="animate-pulse bg-white rounded-2xl overflow-hidden shadow h-64"></div>
+      <div class="animate-pulse bg-white rounded-2xl overflow-hidden shadow h-64 hidden sm:block"></div>
+      <div class="animate-pulse bg-white rounded-2xl overflow-hidden shadow h-64 hidden lg:block"></div>
+      <div class="animate-pulse bg-white rounded-2xl overflow-hidden shadow h-64 hidden lg:block"></div>
+    </div>
+
+    <!-- Empty state -->
+    <div id="emptyState" class="hidden text-center py-20 text-gray-400">
+      <i class="fa-solid fa-building-circle-exclamation text-5xl mb-4 block"></i>
+      <p class="text-lg font-medium">Tidak ada fasilitas ditemukan</p>
+      <p class="text-sm mt-1">Coba ubah filter atau kata kunci pencarian</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="errorState" class="hidden text-center py-20 text-red-400">
+      <i class="fa-solid fa-triangle-exclamation text-5xl mb-4 block"></i>
+      <p class="text-lg font-medium">Gagal memuat data</p>
+      <p class="text-sm mt-1">Periksa koneksi internet kamu dan coba lagi</p>
+      <button
+        onclick="window.location.reload()"
+        class="mt-4 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm hover:bg-red-100 transition-colors"
+      >
+        <i class="fa-solid fa-rotate-right mr-1"></i>Muat Ulang
+      </button>
+    </div>
+
+    <!-- Grid fasilitas -->
+    <div id="facilitiesGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+    <!-- Results count -->
+    <p id="resultsCount" class="mt-4 text-xs text-gray-400 text-right hidden"></p>
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="bg-white border-t border-gray-100 py-4 text-center text-xs text-gray-400">
+    © 2024 Smart City. Semua hak dilindungi.
+  </footer>
+
+  <script src="/js/facilities.js"></script>
+</body>
+</html>

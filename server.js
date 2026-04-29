@@ -67,6 +67,10 @@ app.use('/api/reports', reportRoutes);
 const commentRoutes = require('./routes/comments');
 app.use('/api/reports/:id/comments', commentRoutes);
 
+//Facility routes
+const facilityRoutes = require('./Routes/facilityRoutes');
+app.use('/api/facilities', facilityRoutes)
+
 // Direct comment edit/delete
 const isAuth = require('./middleware/isAuth');
 const { deleteComment, editComment } = require('./controllers/commentController');
