@@ -26,42 +26,7 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
 
-  <!-- ===== NAVBAR ===== -->
-  <nav class="bg-white shadow-sm sticky top-0 z-50">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <!-- Brand -->
-      <a href="/pages/home.html" class="flex items-center gap-2 text-blue-600 font-bold text-xl">
-        <i class="fa-solid fa-city"></i>
-        <span>Smart City</span>
-      </a>
-
-      <!-- Nav links -->
-      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-        <a href="menu.html"    class="hover:text-blue-600 transition-colors">Menu</a>
-        <a href="reports.html"    class="hover:text-blue-600 transition-colors">Laporan</a>
-        <a href="facilities.html" class="text-blue-600 border-b-2 border-blue-600 pb-0.5">Fasilitas</a>
-      </div>
-
-      <!-- User info -->
-      <div id="userInfo" class="flex items-center gap-3 text-sm text-gray-600">
-        <span id="userName" class="hidden md:inline"></span>
-        <a
-          id="logoutBtn"
-          href="#"
-          class="hidden bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors text-xs font-medium"
-        >
-          <i class="fa-solid fa-right-from-bracket mr-1"></i>Keluar
-        </a>
-        <a
-          id="loginBtn"
-          href="/login.html"
-          class="hidden bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors text-xs font-medium"
-        >
-          Masuk
-        </a>
-      </div>
-    </div>
-  </nav>
+  <!--Navbar-->
 
   <!-- ===== HEADER ===== -->
   <header class="bg-blue-600 text-white py-10">
@@ -127,7 +92,6 @@
 
     <!-- Loading state -->
     <div id="loadingState" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      <!-- Skeleton cards -->
       <div class="animate-pulse bg-white rounded-2xl overflow-hidden shadow h-64"></div>
       <div class="animate-pulse bg-white rounded-2xl overflow-hidden shadow h-64"></div>
       <div class="animate-pulse bg-white rounded-2xl overflow-hidden shadow h-64"></div>
@@ -165,9 +129,10 @@
 
   <!-- ===== FOOTER ===== -->
   <footer class="bg-white border-t border-gray-100 py-4 text-center text-xs text-gray-400">
-    © 2024 Smart City. Semua hak dilindungi.
+    © 2026 Smart City. Semua hak dilindungi.
   </footer>
 
-  <script src="/js/facilities.js"></script>
+  <!-- Use the Tailwind-compatible facilities script -->
+  <script src="../js/facilities.js"></script>
 </body>
 </html>

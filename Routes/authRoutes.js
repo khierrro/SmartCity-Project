@@ -38,7 +38,7 @@ router.post('/register', async (req, res) => {
 // POST /login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role: requiredRole } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email dan password wajib diisi' });
@@ -49,12 +49,23 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Email tidak terdaftar' });
     }
 
+    // --- CHECK ROLE ---
+    if (requiredRole && user.role !== requiredRole) {
+      if (requiredRole === 'citizen' && user.role === 'admin') {
+        return res.status(401).json({ message: 'Akun ini bukan akun warga. Silakan login melalui halaman admin.' });
+      }
+      if (requiredRole === 'admin' && user.role === 'citizen') {
+        return res.status(401).json({ message: 'Akun ini bukan akun admin. Silakan login melalui halaman warga.' });
+      }
+      return res.status(401).json({ message: 'Role tidak sesuai' });
+    }
+
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(401).json({ message: 'Password salah' });
     }
 
-    // Simpan informasi lengkap di session
+    // Simpan ke session
     req.session.user = {
       id: user.id,
       name: user.name,
@@ -81,6 +92,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// GET /me
 router.get('/me', (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ loggedIn: false });
@@ -96,7 +108,7 @@ router.get('/me', (req, res) => {
   });
 });
 
-
+// PUT /profile (HANYA SATU)
 router.put('/profile', async (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ message: 'Silakan login terlebih dahulu' });
@@ -114,6 +126,7 @@ router.put('/profile', async (req, res) => {
     const updateData = {};
     if (phone !== undefined) updateData.phone = phone;
     if (address !== undefined) updateData.address = address;
+
     if (newPassword) {
       if (!currentPassword) {
         return res.status(400).json({ message: 'Password saat ini harus diisi untuk mengubah password' });
@@ -124,53 +137,7 @@ router.put('/profile', async (req, res) => {
       }
       updateData.password = await bcrypt.hash(newPassword, 10);
     }
-    if (Object.keys(updateData).length > 0) {
-      await user.update(updateData);
-      if (phone !== undefined) req.session.user.phone = phone;
-      if (address !== undefined) req.session.user.address = address;
-    }
 
-    res.json({ message: 'Profil berhasil diperbarui' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Terjadi kesalahan server' });
-  }
-});
-// PUT /profile - update phone, address, and/or password
-router.put('/profile', async (req, res) => {
-  // Check if user is logged in
-  if (!req.session.user) {
-    return res.status(401).json({ message: 'Silakan login terlebih dahulu' });
-  }
-
-  const userId = req.session.user.id;
-  const { phone, address, currentPassword, newPassword } = req.body;
-
-  try {
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User tidak ditemukan' });
-    }
-
-    // Fields to update
-    const updateData = {};
-
-    // Update phone & address if provided
-    if (phone !== undefined) updateData.phone = phone;
-    if (address !== undefined) updateData.address = address;
-
-    // If trying to change password
-    if (newPassword) {
-      // Require current password for verification
-      if (!currentPassword) {
-        return res.status(400).json({ message: 'Password saat ini harus diisi untuk mengubah password' });
-      }
-      const isMatch = await bcrypt.compare(currentPassword, user.password);
-      if (!isMatch) {
-        return res.status(401).json({ message: 'Password saat ini salah' });
-      }
-      updateData.password = await bcrypt.hash(newPassword, 10);
-    }
     if (Object.keys(updateData).length > 0) {
       await user.update(updateData);
       if (phone !== undefined) req.session.user.phone = phone;
@@ -184,23 +151,25 @@ router.put('/profile', async (req, res) => {
   }
 });
 
+// POST /logout
 router.post('/logout', (req, res) => {
   req.session.destroy(err => {
     if (err) {
       return res.status(500).json({ message: 'Gagal logout' });
     }
     res.clearCookie('connect.sid');
-    res.json({ message: 'Logout berhasil' });
+    res.redirect('/index.html');
   });
 });
 
+// DELETE /account
 router.delete('/account', async (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ message: 'Silakan login terlebih dahulu' });
   }
 
   const userId = req.session.user.id;
-  const { password } = req.body;  // verify password before deletion
+  const { password } = req.body;
 
   if (!password) {
     return res.status(400).json({ message: 'Password diperlukan untuk menghapus akun' });
@@ -216,17 +185,19 @@ router.delete('/account', async (req, res) => {
     if (!match) {
       return res.status(401).json({ message: 'Password salah' });
     }
+
     await user.destroy();
     req.session.destroy(err => {
       if (err) {
         return res.status(500).json({ message: 'Akun dihapus, tetapi logout gagal' });
       }
       res.clearCookie('connect.sid');
-      res.json({ message: 'Akun berhasil dihapus' });
+      res.json({ message: 'Akun berhasil dihapus' });   // hanya JSON, frontend akan redirect
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Terjadi kesalahan server' });
   }
 });
+
 module.exports = router;

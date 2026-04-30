@@ -1,3 +1,4 @@
+CitizenGuard.protect();
 document.addEventListener('DOMContentLoaded', () => {
   let page = 1;
   let allReports = [];

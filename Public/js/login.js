@@ -1,4 +1,3 @@
-// public/script/login.js
 'use strict';
 
 const roleConfig = {
@@ -24,11 +23,12 @@ const roleConfig = {
   },
 };
 
+// Baca parameter role dari URL (contoh: ?role=admin atau ?role=citizen)
 const params = new URLSearchParams(window.location.search);
 const role = params.get("role") || "citizen";
 const config = roleConfig[role] || roleConfig.citizen;
 
-// Terapkan ke elemen HTML
+// Terapkan konfigurasi ke elemen HTML
 document.getElementById("pageTitle").textContent = config.pageTitle;
 document.getElementById("loginTitle").textContent = config.loginTitle;
 document.getElementById("userIcon").className = config.userIcon;
@@ -43,14 +43,13 @@ if (config.showRegister) {
   registerLink.style.display = "none";
 }
 
-// Jika admin, tambahkan tautan "Warga? Login di sini" di bawah tombol
+// Tautan silang admin/warga
 if (role === 'admin') {
   const link = document.createElement('p');
   link.className = 'text-center mt-2';
   link.innerHTML = '<small><a href="/login.html" class="text-muted">Warga? Login di sini</a></small>';
   document.querySelector('#leftPanel form').appendChild(link);
 } else {
-  // Jika warga, tambahkan tautan "Admin? Login di sini"
   const link = document.createElement('p');
   link.className = 'text-center mt-2';
   link.innerHTML = '<small><a href="/login.html?role=admin" class="text-muted">Admin? Login di sini</a></small>';
@@ -62,7 +61,7 @@ if (config.leftPanelClass) {
   leftPanel.classList.add(config.leftPanelClass);
 }
 
-// Form submit
+// Form submit – kirim role dari URL langsung ke server
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -73,14 +72,13 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     const res = await fetch("/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, role })   // ← role dikirim di sini
     });
 
     const data = await res.json();
 
     if (res.ok) {
       localStorage.setItem("user", JSON.stringify(data.user));
-      // Redirect sesuai role
       if (data.user.role === "admin") {
         window.location.href = "/pages/admin.html";
       } else {

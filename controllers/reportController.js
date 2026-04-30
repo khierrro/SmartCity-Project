@@ -137,7 +137,10 @@ const getReportById = async (req, res) => {
     if (!report) return res.status(404).json({ success: false, message: 'Laporan tidak ditemukan' });
 
     const isAdmin = req.user && req.user.role === 'admin';
-    if (report.status === 'hidden' && !isAdmin) {
+    const isOwner = req.user && req.user.id === report.user_id;
+
+    // Hidden reports are only accessible by admin or the owner
+    if (report.status === 'hidden' && !isAdmin && !isOwner) {
       return res.status(403).json({ success: false, message: 'Laporan tidak tersedia' });
     }
 
@@ -163,9 +166,17 @@ const getReportById = async (req, res) => {
         reason: f.reason || 'Tanpa alasan',
         created_at: f.created_at,
       }));
+      // Admin can never comment (already the case)
       data.can_comment = false;
     } else {
-      data.can_comment = (req.user != null);
+      // For citizens and guests
+      // If the report is hidden, nobody can comment (including the owner)
+      if (report.status === 'hidden') {
+        data.can_comment = false;
+      } else {
+        // Only logged‑in citizens can comment on non‑hidden reports
+        data.can_comment = (req.user != null && req.user.role !== 'admin');
+      }
     }
 
     res.json({ success: true, data });

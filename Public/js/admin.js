@@ -1,76 +1,95 @@
+// public/js/admin.js
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
+  // Admin name
+  const adminName = document.getElementById('adminName');
+  if (adminName) adminName.textContent = 'Admin';
 
-  try {
-    const res = await fetch('/me');
-    if (!res.ok) throw new Error('Not logged in');
-    const user = await res.json();
-    if (!user.loggedIn || user.role !== 'admin') {
-      window.location.href = '/login.html?role=admin';
-      return;
-    }
-    document.getElementById('adminName').textContent = user.name;
-  } catch {
-    window.location.href = '/login.html?role=admin';
-    return;
+  // Notification bell – pakai style.display, bukan classList
+  const bell = document.getElementById('notificationBell');
+  if (bell) {
+    bell.addEventListener('click', () => {
+      const dropdown = document.getElementById('notificationDropdown');
+      if (dropdown) {
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+      }
+    });
   }
 
-  // Load data
+  // Mark all read
+  const markAllRead = document.getElementById('markAllReadBtn');
+  if (markAllRead) {
+    markAllRead.addEventListener('click', async () => {
+      await fetch('/api/admin/mark-all-read', { method: 'PUT' });
+      loadNotifications();
+      const dropdown = document.getElementById('notificationDropdown');
+      if (dropdown) dropdown.style.display = 'none';
+    });
+  }
+
+  // Top toggle buttons – only if they exist
+  const topVotesBtn = document.getElementById('topVotesBtn');
+  const topRecentBtn = document.getElementById('topRecentBtn');
+  if (topVotesBtn && topRecentBtn) {
+    topVotesBtn.addEventListener('click', () => {
+      loadTopReports('vote_count');
+      topVotesBtn.classList.replace('bg-gray-300', 'bg-blue-600');
+      topVotesBtn.classList.add('text-white');
+      topRecentBtn.classList.replace('bg-blue-600', 'bg-gray-300');
+      topRecentBtn.classList.remove('text-white');
+    });
+    topRecentBtn.addEventListener('click', () => {
+      loadTopReports('created_at');
+      topRecentBtn.classList.replace('bg-gray-300', 'bg-blue-600');
+      topRecentBtn.classList.add('text-white');
+      topVotesBtn.classList.replace('bg-blue-600', 'bg-gray-300');
+      topVotesBtn.classList.remove('text-white');
+    });
+  }
+
+  // Facility modal – only if the button exists
+  const addFacilityBtn = document.getElementById('openAddFacilityModal');
+  if (addFacilityBtn) {
+    addFacilityBtn.addEventListener('click', () => {
+      document.getElementById('modalTitle').textContent = 'Tambah Fasilitas';
+      document.getElementById('facilityForm').reset();
+      document.getElementById('facilityId').value = '';
+      toggleModal(true);
+    });
+  }
+
+  const closeModalBtn = document.getElementById('closeModalBtn');
+  if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', () => toggleModal(false));
+  }
+
+  const facilityForm = document.getElementById('facilityForm');
+  if (facilityForm) {
+    facilityForm.addEventListener('submit', saveFacility);
+  }
+
+  // Close dropdown when clicking outside (pakai style.display)
+  window.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('notificationDropdown');
+    const bellBtn = document.getElementById('notificationBell');
+    if (dropdown && bellBtn && !e.target.closest('#notificationBell') && !e.target.closest('#notificationDropdown')) {
+      dropdown.style.display = 'none';
+    }
+  });
+
+  // Load initial data
   loadStats();
-  loadTopReports('vote_count'); // default by votes
+  loadTopReports('vote_count');
   loadFacilities();
   loadNotifications();
-
-// Toggle notification dropdown
-document.getElementById('notificationBell').addEventListener('click', () => {
-  document.getElementById('notificationDropdown').classList.toggle('hidden');
-});
-
-// Mark all read
-document.getElementById('markAllReadBtn').addEventListener('click', async () => {
-  await fetch('/api/admin/mark-all-read', { method: 'PUT' });
-  loadNotifications();
-  document.getElementById('notificationDropdown').classList.add('hidden');
-});
-
-// Close dropdown if clicking outside (optional)
-window.addEventListener('click', (e) => {
-  if (!e.target.closest('#notificationBell') && !e.target.closest('#notificationDropdown')) {
-    document.getElementById('notificationDropdown').classList.add('hidden');
-  }
-});
-
-  // Top toggle buttons
-  document.getElementById('topVotesBtn').addEventListener('click', () => {
-    loadTopReports('vote_count');
-    document.getElementById('topVotesBtn').classList.replace('bg-gray-300','bg-blue-600');
-    document.getElementById('topVotesBtn').classList.add('text-white');
-    document.getElementById('topRecentBtn').classList.replace('bg-blue-600','bg-gray-300');
-    document.getElementById('topRecentBtn').classList.remove('text-white');
-  });
-  document.getElementById('topRecentBtn').addEventListener('click', () => {
-    loadTopReports('created_at');
-    document.getElementById('topRecentBtn').classList.replace('bg-gray-300','bg-blue-600');
-    document.getElementById('topRecentBtn').classList.add('text-white');
-    document.getElementById('topVotesBtn').classList.replace('bg-blue-600','bg-gray-300');
-    document.getElementById('topVotesBtn').classList.remove('text-white');
-  });
-
-  // Facility modal
-  document.getElementById('openAddFacilityModal').addEventListener('click', () => {
-    document.getElementById('modalTitle').textContent = 'Tambah Fasilitas';
-    document.getElementById('facilityForm').reset();
-    document.getElementById('facilityId').value = '';
-    toggleModal(true);
-  });
-  document.getElementById('closeModalBtn').addEventListener('click', () => toggleModal(false));
-  document.getElementById('facilityForm').addEventListener('submit', saveFacility);
 });
 
 function toggleModal(show) {
   const modal = document.getElementById('facilityModal');
-  modal.classList.toggle('hidden', !show);
-  modal.classList.toggle('flex', show);
+  if (modal) {
+    modal.classList.toggle('hidden', !show);
+    modal.classList.toggle('flex', show);
+  }
 }
 
 // ---------- STATISTICS ----------
@@ -88,6 +107,7 @@ async function loadStats() {
 // ---------- TOP 5 REPORTS ----------
 async function loadTopReports(sortBy) {
   const container = document.getElementById('topReportsContainer');
+  if (!container) return;
   container.innerHTML = '<p class="text-gray-500">Memuat...</p>';
   try {
     const res = await fetch(`/api/admin/reports?sort_by=${sortBy}&order=DESC&limit=5`);
@@ -114,6 +134,7 @@ async function loadTopReports(sortBy) {
 // ---------- FACILITIES TABLE ----------
 async function loadFacilities() {
   const tbody = document.getElementById('facilityTableBody');
+  if (!tbody) return;
   try {
     const res = await fetch('/api/admin/facilities');
     const facilities = await res.json();
@@ -134,12 +155,8 @@ async function loadFacilities() {
       </tr>
     `).join('');
 
-    document.querySelectorAll('.edit-facility-btn').forEach(btn => {
-      btn.addEventListener('click', () => editFacility(btn.dataset.id));
-    });
-    document.querySelectorAll('.delete-facility-btn').forEach(btn => {
-      btn.addEventListener('click', () => deleteFacility(btn.dataset.id));
-    });
+    document.querySelectorAll('.edit-facility-btn').forEach(btn => btn.addEventListener('click', () => editFacility(btn.dataset.id)));
+    document.querySelectorAll('.delete-facility-btn').forEach(btn => btn.addEventListener('click', () => deleteFacility(btn.dataset.id)));
   } catch (err) {
     tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-red-500">Gagal memuat</td></tr>';
   }
@@ -171,7 +188,7 @@ async function deleteFacility(id) {
 async function saveFacility(e) {
   e.preventDefault();
   const id = document.getElementById('facilityId').value;
-  const formData = new FormData(document.getElementById('facilityForm'));
+  const formData = new FormData(e.target);
   const url = id ? `/api/admin/facilities/${id}` : '/api/admin/facilities';
   const method = id ? 'PUT' : 'POST';
   try {
@@ -181,18 +198,22 @@ async function saveFacility(e) {
     loadFacilities();
   } catch (err) { alert(err.message); }
 }
+
+// ---------- NOTIFICATIONS ----------
 async function loadNotifications() {
+  const countSpan = document.getElementById('notificationCount');
+  const listDiv = document.getElementById('notificationList');
+  if (!countSpan || !listDiv) return;
+
   try {
     const res = await fetch('/api/admin/unread-notifications');
     const data = await res.json();
-    const countSpan = document.getElementById('notificationCount');
-    const listDiv = document.getElementById('notificationList');
 
     if (data.count > 0) {
       countSpan.textContent = data.count > 9 ? '9+' : data.count;
-      countSpan.classList.remove('hidden');
+      countSpan.style.display = 'flex';   // inline style, bukan class
     } else {
-      countSpan.classList.add('hidden');
+      countSpan.style.display = 'none';
     }
 
     if (!data.reports.length) {
@@ -211,28 +232,24 @@ async function loadNotifications() {
     `).join('');
 
     // Mark as read when clicking a notification
-   document.querySelectorAll('.report-notif-item').forEach(item => {
-  item.addEventListener('click', async (e) => {
-    e.preventDefault(); // Stop immediate navigation
-
-    const id = item.getAttribute('data-id');
-    const href = item.getAttribute('href'); // We'll add href to the <a>
-
-    try {
-      await fetch(`/api/admin/reports/${id}/mark-read`, { method: 'PUT' });
-      // After successful mark‑read, navigate to the detail page
-      window.location.href = href;
-    } catch (err) {
-      console.error('Gagal menandai sebagai dibaca', err);
-      // Still navigate even if mark‑read fails? Or show error?
-      window.location.href = href;
-    }
-  });
-});
+    document.querySelectorAll('.report-notif-item').forEach(item => {
+      item.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const id = item.getAttribute('data-id');
+        const href = item.getAttribute('href');
+        try {
+          await fetch(`/api/admin/reports/${id}/mark-read`, { method: 'PUT' });
+        } catch (err) {
+          console.error('Gagal menandai sebagai dibaca', err);
+        }
+        window.location.href = href;
+      });
+    });
   } catch (err) {
     console.error('Gagal memuat notifikasi', err);
   }
-};
+}
+
 async function logout() {
   try {
     await fetch('/logout', { method: 'POST' });

@@ -1,4 +1,5 @@
 'use strict';
+AdminGuard.protect();
 const API = '/api';
 let currentPage = 1;
 let activeReportId = null;

@@ -6,8 +6,9 @@ require("dotenv").config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const fs = require('fs');
 
-// Middleware
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(session({
@@ -16,8 +17,9 @@ app.use(session({
   saveUninitialized: false,
   cookie: { secure: false }
 }));
-
-// Protect admin pages
+// ============================
+// SERVER‑SIDE NAVBAR INJECTION (Tailwind‑safe)
+// ============================
 app.get('/pages/admin.html', (req, res, next) => {
   if (!req.session.user || req.session.user.role !== 'admin') return res.redirect('/login.html?role=admin');
   next();
@@ -25,6 +27,95 @@ app.get('/pages/admin.html', (req, res, next) => {
 app.get('/pages/admin-search.html', (req, res, next) => {
   if (!req.session.user || req.session.user.role !== 'admin') return res.redirect('/login.html?role=admin');
   next();
+});
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/pages/') || !req.path.endsWith('.html')) return next();
+
+  const filePath = path.join(__dirname, 'public', req.path);
+  if (!fs.existsSync(filePath)) return next();
+
+  fs.readFile(filePath, 'utf8', (err, html) => {
+    if (err) return next();
+    
+    let navbar = '';
+    const isAdmin = req.session.user && req.session.user.role === 'admin';
+    const isLoggedIn = !!req.session.user;
+
+    if (isAdmin) {
+  navbar = `
+    <nav style="position:sticky;top:0;z-index:1000;background:white;box-shadow:0 2px 4px rgba(0,0,0,0.1);padding:0.5rem 1rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;max-width:1200px;margin:0 auto;flex-wrap:wrap;gap:0.5rem">
+        <a href="/pages/admin.html" style="text-decoration:none;font-weight:bold;font-size:1.25rem;color:#333">
+          SMART<span style="color:#2563eb">CITY</span>
+        </a>
+        <div style="display:flex;align-items:center;gap:1rem">
+          <a href="/pages/admin.html" style="text-decoration:none;color:#555;font-weight:500">DASHBOARD</a>
+          <a href="/pages/admin-search.html" style="text-decoration:none;color:#555;font-weight:500">LAPORAN</a>
+          <a href="/pages/admin-facility-search.html" style="text-decoration:none;color:#555;font-weight:500">FASILITAS</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.75rem">
+          <!-- Notification Bell -->
+          <div style="position:relative;">
+            <button id="notificationBell" style="background:none;border:none;cursor:pointer;font-size:1.25rem;color:#555" onclick="event.stopPropagation()">
+              <i class="fa-regular fa-bell"></i>
+            </button>
+            <span id="notificationCount" style="position:absolute;top:-0.25rem;right:-0.25rem;background:#ef4444;color:white;border-radius:50%;height:1.25rem;width:1.25rem;display:flex;align-items:center;justify-content:center;font-size:0.75rem;display:none">0</span>
+            <!-- Notification Dropdown -->
+            <div id="notificationDropdown" style="position:absolute;right:0;top:2rem;width:20rem;background:white;border-radius:0.5rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:0.5rem;display:none;z-index:50">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+                <span style="font-weight:600">Notifikasi</span>
+                <button id="markAllReadBtn" style="font-size:0.75rem;color:#2563eb;background:none;border:none;cursor:pointer">Tandai semua sudah dibaca</button>
+              </div>
+              <div id="notificationList" style="max-height:15rem;overflow-y:auto;font-size:0.875rem">
+                <p style="text-align:center;color:#888;padding:1rem">Memuat...</p>
+              </div>
+            </div>
+          </div>
+          <span style="font-size:0.875rem;color:#555">Admin: ${req.session.user.name}</span>
+          <form action="/logout" method="POST" style="margin:0">
+            <button type="submit" style="background:none;border:1px solid #ef4444;color:#ef4444;padding:0.25rem 0.75rem;border-radius:0.25rem;font-size:0.875rem;cursor:pointer">
+              <i class="fas fa-sign-out-alt"></i> Keluar
+            </button>
+          </form>
+        </div>
+      </div>
+    </nav>`;
+}
+     else {
+      navbar = `
+        <nav style="position:sticky;top:0;z-index:1000;background:white;box-shadow:0 2px 4px rgba(0,0,0,0.1);padding:0.5rem 1rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;max-width:1200px;margin:0 auto">
+            <a href="/pages/menu.html" style="text-decoration:none;font-weight:bold;font-size:1.25rem;color:#333">
+              SMART<span style="color:#2563eb">CITY</span>
+            </a>
+            <div style="display:flex;align-items:center;gap:1rem">
+              <a href="/pages/menu.html" style="text-decoration:none;color:#555;font-weight:500">HOME</a>
+              <a href="/pages/reports.html" style="text-decoration:none;color:#555;font-weight:500">LAPORAN</a>
+              <a href="/pages/facilities.html" style="text-decoration:none;color:#555;font-weight:500">FASILITAS</a>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.5rem">
+              ${isLoggedIn ? `
+                <span style="font-size:0.875rem;color:#555">Halo, ${req.session.user.name}</span>
+                <a href="/pages/profile.html" style="text-decoration:none;color:#2563eb;border:1px solid #2563eb;padding:0.25rem 0.75rem;border-radius:0.25rem;font-size:0.875rem">
+                  <i class="fa-regular fa-circle-user"></i> Profil
+                </a>
+                <form action="/logout" method="POST" style="margin:0">
+                  <button type="submit" style="background:none;border:1px solid #ef4444;color:#ef4444;padding:0.25rem 0.75rem;border-radius:0.25rem;font-size:0.875rem;cursor:pointer">
+                    <i class="fas fa-sign-out-alt"></i> Keluar
+                  </button>
+                </form>
+              ` : `
+                <a href="/login.html?role=citizen" style="text-decoration:none;color:#2563eb;border:1px solid #2563eb;padding:0.25rem 0.75rem;border-radius:0.25rem;font-size:0.875rem">Login</a>
+              `}
+            </div>
+          </div>
+        </nav>`;
+    }
+
+    const result = html.replace('<!--Navbar-->', navbar);
+    res.send(result);
+  });
 });
 
 // Static files
@@ -87,84 +178,9 @@ app.get('/api/facilities', async (req, res) => {
 
 // Dynamic report detail page (with navbar injection)
 app.get('/report-detail', (req, res) => {
-  const fs = require('fs');
-  const filePath = path.join(__dirname, 'public', 'pages', 'report-detail.html');
-
-  fs.readFile(filePath, 'utf8', (err, html) => {
-    if (err) {
-      console.error('Template error:', err);
-      return res.status(500).send('Error loading page');
-    }
-
-    let navbar = '';
-    const isAdmin = req.session.user && req.session.user.role === 'admin';
-    const isLoggedIn = !!req.session.user;
-
-    if (isAdmin) {
-      navbar = `
-      <nav class="navbar navbar-expand-lg sticky-top bg-white shadow" style="z-index:1000;">
-        <div class="container-fluid">
-          <a class="navbar-brand" href="/pages/admin.html">SMART<span>CITY</span></a>
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-          <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav mx-auto mb-2 gap-4">
-              <li class="nav-item"><a class="nav-link" href="/pages/admin.html">DASHBOARD</a></li>
-              <li class="nav-item"><a class="nav-link active" href="/pages/admin-search.html">LAPORAN</a></li>
-              <li class="nav-item"><a class="nav-link" href="/pages/admin-facility-search.html">FASILITAS</a></li>
-            </ul>
-            <div class="d-flex align-items-center gap-2">
-              <span class="text-sm">Admin: ${req.session.user.name}</span>
-              <form action="/logout" method="POST" style="display:inline;">
-                <button type="submit" class="btn btn-outline-danger btn-sm">
-                  <i class="fas fa-sign-out-alt"></i> Keluar
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </nav>`;
-    } else {
-      navbar = `
-      <nav class="navbar navbar-expand-lg sticky-top bg-white shadow" style="z-index:1000;">
-        <div class="container-fluid">
-          <a class="navbar-brand" href="/pages/menu.html">SMART<span>CITY</span></a>
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent">
-            <span class="navbar-toggler-icon"></span>
-          </button>
-          <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav mx-auto mb-2 gap-4">
-              <li class="nav-item"><a class="nav-link" href="/pages/menu.html">HOME</a></li>
-              <li class="nav-item"><a class="nav-link active" href="/pages/reports.html">LAPORAN</a></li>
-              <li class="nav-item"><a class="nav-link" href="/pages/facilities.html">FASILITAS</a></li>
-            </ul>
-            <div id="navbarRight">`;
-      if (isLoggedIn) {
-        navbar += `
-              <span class="me-3">Halo, ${req.session.user.name}</span>
-              <a class="btn btn-outline-primary btn-sm" href="/pages/profile.html">
-                <i class="fa-regular fa-circle-user"></i> Profil
-              </a>
-              <form action="/logout" method="POST" style="display:inline;">
-                <button type="submit" class="btn btn-outline-danger btn-sm ms-2">
-                  <i class="fas fa-sign-out-alt"></i> Keluar
-                </button>
-              </form>`;
-      } else {
-        navbar += `
-              <a class="btn btn-outline-primary btn-sm" href="/login.html?role=citizen">Login</a>`;
-      }
-      navbar += `
-            </div>
-          </div>
-        </div>
-      </nav>`;
-    }
-
-    const result = html.replace('<!-- NAVBAR -->', navbar);
-    res.send(result);
-  });
+  // Set the URL to /pages/report-detail.html internally
+  req.url = '/pages/report-detail.html';
+  app.handle(req, res);
 });
 
 // -------------------- 404 handler (ALWAYS LAST) --------------------
