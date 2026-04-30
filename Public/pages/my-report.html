@@ -1,71 +1,75 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Laporan Saya - Smart City</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="stylesheet" href="../css/default.css">
-</head>
-<body>
+  <!DOCTYPE html>
+  <html lang="id">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Saya - Smart City</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="../css/default.css">
+  </head>
+  <body>
 
-<!--Navbar-->
+  <!--Navbar-->
 
-<main class="container py-4">
-  <h2 class="text-center fw-bold mb-4">Laporan Saya</h2>
-  <div class="row g-4" id="myReportsContainer">
-    <div class="col-12 text-center py-5 text-muted">
-      <i class="fas fa-spinner fa-spin fa-2x"></i> <p>Memuat laporan Anda…</p>
-    </div>
-  </div>
-</main>
-
-<!-- Edit Report Modal -->
-<div class="modal fade" id="editReportModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title fw-bold">Edit Laporan</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <form id="editReportForm" enctype="multipart/form-data">
-          <input type="hidden" id="editReportId">
-          <div class="mb-3">
-            <label class="form-label">Judul <span class="text-danger">*</span></label>
-            <input type="text" id="editTitle" name="title" class="form-control" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Deskripsi <span class="text-danger">*</span></label>
-            <textarea id="editDescription" name="description" rows="4" class="form-control" required></textarea>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Lokasi</label>
-            <input type="text" id="editLocation" name="location_text" class="form-control">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Fasilitas</label>
-            <select id="editFacility" name="facility_id" class="form-select">
-              <option value="">-- Pilih Fasilitas --</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Foto Baru (opsional)</label>
-            <input type="file" id="editImage" name="image" accept="image/*" class="form-control">
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-        <button type="button" class="btn btn-primary" id="saveEditBtn">Simpan Perubahan</button>
+  <main class="container py-4">
+    <h2 class="text-center fw-bold mb-4">Laporan Saya</h2>
+    <div class="row g-4" id="myReportsContainer">
+      <div class="col-12 text-center py-5 text-muted">
+        <i class="fas fa-spinner fa-spin fa-2x"></i> <p>Memuat laporan Anda…</p>
       </div>
     </div>
+  </main>
+
+  <!-- Edit Report Modal -->
+  <div class="modal fade" id="editReportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold">Edit Laporan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editReportForm" enctype="multipart/form-data">
+            <input type="hidden" id="editReportId">
+            <div class="mb-3">
+              <label class="form-label">Judul <span class="text-danger">*</span></label>
+              <input type="text" id="editTitle" name="title" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Deskripsi <span class="text-danger">*</span></label>
+              <textarea id="editDescription" name="description" rows="4" class="form-control" required></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Lokasi</label>
+              <input type="text" id="editLocation" name="location_text" class="form-control">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Fasilitas</label>
+              <select id="editFacility" name="facility_id" class="form-select">
+                <option value="">-- Pilih Fasilitas --</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Foto Baru (opsional)</label>
+              <input type="file" id="editImage" name="image" accept="image/*" class="form-control">
+              <div id="editImagePreview" style="display:none; margin-top:0.5rem;">
+    <p class="form-label">Gambar saat ini:</p>
+    <img id="editCurrentImage" src="" class="img-fluid rounded" style="max-height:100px;">
   </div>
-</div>
-<footer class="text-center py-3 text-muted">@ 2026 Smart City Pengaduan.</footer>
-<script src="../js/authguard.js"></script>
-<script src="../js/my-reports.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-primary" id="saveEditBtn">Simpan Perubahan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="text-center py-3 text-muted">@ 2026 Smart City Pengaduan.</footer>
+  <script src="../js/authguard.js"></script>
+  <script src="../js/my-reports.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+  </html>

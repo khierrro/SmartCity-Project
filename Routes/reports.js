@@ -38,30 +38,31 @@
   });
 
   router.get('/my', isAuth, async (req, res) => {
-    try {
-      const userId = req.session.user.id;
-      const reports = await Report.findAll({
-        where: { user_id: userId },
-        include: [{ model: Facility, attributes: ['name'] }],
-        order: [['created_at', 'DESC']]
-      });
-      const formatted = reports.map(r => ({
-        id: r.id,
-        title: r.title,
-        description: r.description,               // ← add
-        location_text: r.location_text,           // ← add
-        facility: r.Facility ? r.Facility.name : null,
-        facility_id: r.facility_id,               // ← add
-        status: r.status,
-        vote_count: r.vote_count,
-        image_path: r.image_path,                // optional for future
-        created_at: r.created_at
-      }));
-      res.json({ success: true, data: formatted });
-    } catch (err) {
-      res.status(500).json({ success: false, message: err.message });
-    }
-  });
+  try {
+    const userId = req.session.user.id;
+    const reports = await Report.findAll({
+      where: { user_id: userId },
+      include: [{ model: Facility, attributes: ['name'] }],
+      order: [['created_at', 'DESC']]
+    });
+    const formatted = reports.map(r => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,        // ← add
+      location_text: r.location_text,    // ← add
+      facility: r.Facility ? r.Facility.name : null,
+      facility_id: r.facility_id,        // ← add
+      status: r.status,
+      vote_count: r.vote_count,
+      image_path: r.image_path,          // ← add
+      user_id: r.user_id,                // ← add (for ownership check)
+      created_at: r.created_at
+    }));
+    res.json({ success: true, data: formatted });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
   // ---------- RUTE DENGAN PARAMETER ----------
   router.get('/:id',          isAuth, reportController.getReportById);
