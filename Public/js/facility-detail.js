@@ -79,6 +79,9 @@ function renderReports(reports) {
   const loading = document.getElementById('reportsLoading');
   const empty   = document.getElementById('reportsEmpty');
   const list    = document.getElementById('reportsList');
+
+  if (!loading || !empty || !list) return;
+
   loading.classList.add('hidden');
   if (!reports || reports.length === 0) {
     empty.classList.remove('hidden');
@@ -91,39 +94,47 @@ function renderReports(reports) {
 async function init() {
   const params = new URLSearchParams(window.location.search);
   const facilityId = params.get('id');
+  const loadingState = document.getElementById('loadingState');
+  const errorState = document.getElementById('errorState');
+  const mainContent = document.getElementById('mainContent');
+
   if (!facilityId || isNaN(Number(facilityId))) {
-    document.getElementById('loadingState').classList.add('hidden');
-    document.getElementById('errorState').classList.remove('hidden');
+    if (loadingState) loadingState.classList.add('hidden');
+    if (errorState) errorState.classList.remove('hidden');
     return;
   }
 
-  // Ambil detail fasilitas
   try {
     const res = await apiFetch(`/api/facilities/${facilityId}`);
-    // Fallback: API bisa mengembalikan langsung objek atau { data: ... }
     const facility = res.data || res;
-    document.getElementById('loadingState').classList.add('hidden');
-    document.getElementById('mainContent').classList.remove('hidden');
+    if (loadingState) loadingState.classList.add('hidden');
+    if (mainContent) mainContent.classList.remove('hidden');
     renderFacility(facility);
   } catch (err) {
-    document.getElementById('loadingState').classList.add('hidden');
-    document.getElementById('errorState').classList.remove('hidden');
+    console.error('Gagal memuat fasilitas:', err);
+    if (loadingState) loadingState.classList.add('hidden');
+    if (errorState) errorState.classList.remove('hidden');
+    const errorText = document.querySelector('#errorState p.text-lg');
+    if (errorText) errorText.textContent = 'Fasilitas tidak ditemukan: ' + err.message;
     return;
   }
 
-  // Ambil laporan terkait
   try {
     const reportsRes = await apiFetch(`/api/reports/search?facility_id=${facilityId}&limit=10`);
     const reports = Array.isArray(reportsRes) ? reportsRes : (reportsRes.data || []);
     renderReports(reports);
     if (reports.length >= 10) {
-      document.getElementById('reportsMoreLink').classList.remove('hidden');
-      document.getElementById('reportsMoreAnchor').href = `/pages/reports.html?facility_id=${facilityId}`;
+      const moreLink = document.getElementById('reportsMoreLink');
+      const moreAnchor = document.getElementById('reportsMoreAnchor');
+      if (moreLink) moreLink.classList.remove('hidden');
+      if (moreAnchor) moreAnchor.href = `/pages/reports.html?facility_id=${facilityId}`;
     }
   } catch (err) {
     console.error('Gagal memuat laporan:', err);
-    document.getElementById('reportsLoading').classList.add('hidden');
-    document.getElementById('reportsEmpty').classList.remove('hidden');
+    const reportsLoading = document.getElementById('reportsLoading');
+    const reportsEmpty = document.getElementById('reportsEmpty');
+    if (reportsLoading) reportsLoading.classList.add('hidden');
+    if (reportsEmpty) reportsEmpty.classList.remove('hidden');
   }
 }
 
