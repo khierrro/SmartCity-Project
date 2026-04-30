@@ -81,7 +81,7 @@ app.use((req, res, next) => {
         </div>
       </div>
     </nav>
-    <script src="/js/admin-notifications.js"></script>`;
+    <script src="/js/admin-notification.js"></script>`;
 }
      else {
       navbar = `
