@@ -80,7 +80,8 @@ app.use((req, res, next) => {
           </form>
         </div>
       </div>
-    </nav>`;
+    </nav>
+    <script src="/js/admin-notifications.js"></script>`;
 }
      else {
       navbar = `
