@@ -136,7 +136,7 @@ async function loadFacilities() {
     tbody.innerHTML = facilities.map(f => `
       <tr>
         <td class="px-6 py-4">${f.image_path ? `<img src="${f.image_path}" class="facility-img">` : '<i class="fas fa-image text-gray-400"></i>'}</td>
-        <td class="px-6 py-4 font-medium"><a href="/pages/admin-facility.html?id=${f.id}" class="text-blue-700 hover:underline">${f.name}</a></td>
+        <td class="px-6 py-4 font-medium"><a href="/pages/facility-detail.html?id=${f.id}" class="text-blue-700 hover:underline">${f.name}</a></td>
         <td class="px-6 py-4">${f.type}</td>
         <td class="px-6 py-4 text-sm">${f.address}</td>
         <td class="px-6 py-4 space-x-2">

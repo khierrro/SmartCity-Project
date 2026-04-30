@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cari Fasilitas | Admin Smart City</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="/css/admin.css" />
+  <style>
+    .facility-img { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <!--Navbar-->
+
+  <!-- Main Content -->
+  <div class="max-w-7xl mx-auto px-4 py-8">
+
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">
+          <i class="fa-solid fa-building-columns mr-2 text-blue-600"></i>Manajemen Fasilitas
+        </h1>
+        <p class="text-gray-500 text-sm mt-1">Kelola data fasilitas publik Smart City</p>
+      </div>
+      <button id="openAddFacilityModal"
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow">
+        <i class="fa-solid fa-plus"></i> Tambah Fasilitas
+      </button>
+    </div>
+
+    <!-- Filter Card -->
+    <div class="bg-white rounded-xl shadow p-5 mb-6">
+      <h2 class="text-sm font-semibold text-gray-600 mb-4 uppercase tracking-wide">
+        <i class="fa-solid fa-filter mr-1 text-blue-500"></i>Filter Pencarian
+      </h2>
+      <div class="flex flex-wrap gap-3 items-end">
+        <div class="flex flex-col gap-1 flex-1 min-w-[180px]">
+          <label for="searchName" class="text-xs font-medium text-gray-500">Nama Fasilitas</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+              <i class="fa-solid fa-magnifying-glass"></i>
+            </span>
+            <input id="searchName" type="text" placeholder="Cari nama fasilitas..."
+              class="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50" />
+          </div>
+        </div>
+        <div class="flex flex-col gap-1 min-w-[160px]">
+          <label for="searchType" class="text-xs font-medium text-gray-500">Tipe Fasilitas</label>
+          <select id="searchType"
+            class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50">
+            <option value="">Semua</option>
+            <option value="hospital">Hospital</option>
+            <option value="police">Police</option>
+            <option value="fire_station">Fire Station</option>
+            <option value="clinic">Clinic</option>
+          </select>
+        </div>
+        <div class="flex gap-2">
+          <button id="searchBtn"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm">
+            <i class="fa-solid fa-search"></i> Cari
+          </button>
+          <button id="resetBtn"
+            class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <h2 class="font-semibold text-gray-700 text-sm">
+          <i class="fa-solid fa-list mr-1 text-blue-500"></i>Daftar Fasilitas
+        </h2>
+        <span id="facilityCount" class="text-xs text-gray-400"></span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+            <tr>
+              <th class="px-5 py-3 text-left w-14">Gambar</th>
+              <th class="px-5 py-3 text-left">Nama</th>
+              <th class="px-5 py-3 text-left">Tipe</th>
+              <th class="px-5 py-3 text-left">Alamat</th>
+              <th class="px-5 py-3 text-left">Telepon</th>
+              <th class="px-5 py-3 text-center w-28">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="facilityTableBody">
+            <tr>
+              <td colspan="6" class="text-center py-10 text-gray-400">
+                <i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat data...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal (persis seperti yang kamu sediakan sebelumnya, tidak ada perubahan) -->
+  <div id="facilityModal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <h3 id="modalTitle" class="font-bold text-gray-800 text-base">Tambah Fasilitas</h3>
+        <button id="closeModal" class="text-gray-400 hover:text-gray-600 transition text-xl">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form id="facilityForm" enctype="multipart/form-data" class="px-6 py-5 space-y-4">
+        <input type="hidden" id="facilityId" />
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Nama <span class="text-red-500">*</span></label>
+          <input id="facName" type="text" required placeholder="Nama fasilitas"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Tipe</label>
+          <select id="facType"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50">
+            <option value="hospital">Hospital</option>
+            <option value="police">Police</option>
+            <option value="fire_station">Fire Station</option>
+            <option value="clinic">Clinic</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Alamat</label>
+          <textarea id="facAddress" rows="2" placeholder="Alamat lengkap"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50 resize-none"></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Telepon</label>
+            <input id="facPhone" type="text" placeholder="Nomor telepon"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Jam Operasional</label>
+            <input id="facHours" type="text" placeholder="Contoh: 08.00 - 17.00"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Gambar Fasilitas</label>
+          <input id="facImage" type="file" accept="image/*"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+          <div id="currentImagePreview" class="mt-2 hidden">
+            <p class="text-xs text-gray-400 mb-1">Gambar saat ini:</p>
+            <img id="currentImageEl" src="" alt="Current" class="facility-img" />
+          </div>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" id="saveBtn"
+            class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-floppy-disk"></i> Simpan
+          </button>
+          <button type="button" id="cancelBtn"
+            class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium transition">
+            Batal
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/admin-facility-search.js"></script>
+</body>
+</html>

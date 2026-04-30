@@ -5,19 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Detail Fasilitas – Smart City</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-  />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <style>
-
-    .status-pending    { background:#fef3c7; color:#92400e; }
-    .status-proses     { background:#dbeafe; color:#1e40af; }
-    .status-selesai    { background:#d1fae5; color:#065f46; }
-    .status-ditolak    { background:#fee2e2; color:#991b1b; }
-    .status-default    { background:#f3f4f6; color:#374151; }
-
-
+    .status-new         { background:#dbeafe; color:#1d4ed8; }
+    .status-in_progress { background:#fef3c7; color:#92400e; }
+    .status-resolved    { background:#d1fae5; color:#065f46; }
+    .status-hidden      { background:#fee2e2; color:#991b1b; }
+    .status-default     { background:#f3f4f6; color:#374151; }
     .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
                 background-size: 200% 100%; animation: shimmer 1.5s infinite; }
     @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
@@ -25,12 +19,12 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
 
+  <!--Navbar-->
 
-   <!--Navbar-->
-
+  <!-- Breadcrumb -->
   <div class="bg-white border-b border-gray-100">
     <div class="max-w-6xl mx-auto px-4 py-2.5 text-xs text-gray-500 flex items-center gap-1.5">
-      <a href="/pages/home.html" class="hover:text-blue-600 transition-colors">Beranda</a>
+      <a href="/pages/menu.html" class="hover:text-blue-600 transition-colors">Beranda</a>
       <i class="fa-solid fa-chevron-right text-[10px]"></i>
       <a href="/pages/facilities.html" class="hover:text-blue-600 transition-colors">Fasilitas</a>
       <i class="fa-solid fa-chevron-right text-[10px]"></i>
@@ -40,6 +34,7 @@
 
   <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
 
+    <!-- Loading state -->
     <div id="loadingState">
       <div class="bg-white rounded-2xl shadow overflow-hidden">
         <div class="md:flex">
@@ -55,40 +50,30 @@
       </div>
     </div>
 
+    <!-- Error state -->
     <div id="errorState" class="hidden text-center py-20 text-red-400">
       <i class="fa-solid fa-triangle-exclamation text-5xl mb-4 block"></i>
       <p class="text-lg font-medium">Fasilitas tidak ditemukan</p>
       <p class="text-sm mt-1">Mungkin telah dihapus atau ID tidak valid</p>
-      <a href="/pages/facilities.html"
-         class="mt-4 inline-block px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm hover:bg-blue-100 transition-colors">
+      <a href="/pages/facilities.html" class="mt-4 inline-block px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm hover:bg-blue-100 transition-colors">
         <i class="fa-solid fa-arrow-left mr-1"></i>Kembali ke Direktori
       </a>
     </div>
 
+    <!-- Main content -->
     <div id="mainContent" class="hidden space-y-6">
-
       <div class="bg-white rounded-2xl shadow overflow-hidden">
         <div class="md:flex">
-
           <div class="md:w-2/5 shrink-0 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center min-h-[260px]">
-            <img
-              id="facilityImage"
-              src=""
-              alt=""
-              class="hidden w-full h-full object-cover max-h-80 md:max-h-full"
-            />
+            <img id="facilityImage" src="" alt="" class="hidden w-full h-full object-cover max-h-80 md:max-h-full" />
             <div id="facilityImagePlaceholder" class="hidden text-center text-blue-200">
               <i id="facilityIconPlaceholder" class="fa-solid fa-hospital text-8xl"></i>
             </div>
           </div>
-
           <div class="flex-1 p-6 md:p-8">
             <span id="facilityTypeBadge" class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full mb-3"></span>
-
             <h1 id="facilityName" class="text-2xl font-bold text-gray-800 leading-tight mb-4"></h1>
-
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-
               <div class="flex items-start gap-2 col-span-1 sm:col-span-2">
                 <i class="fa-solid fa-location-dot text-blue-400 mt-0.5 shrink-0 w-4"></i>
                 <div>
@@ -96,7 +81,6 @@
                   <dd id="facilityAddress" class="text-gray-700 mt-0.5"></dd>
                 </div>
               </div>
-
               <div class="flex items-start gap-2">
                 <i class="fa-solid fa-phone text-blue-400 mt-0.5 shrink-0 w-4"></i>
                 <div>
@@ -104,7 +88,6 @@
                   <dd id="facilityPhone" class="text-gray-700 mt-0.5"></dd>
                 </div>
               </div>
-
               <div class="flex items-start gap-2">
                 <i class="fa-solid fa-clock text-blue-400 mt-0.5 shrink-0 w-4"></i>
                 <div>
@@ -112,9 +95,7 @@
                   <dd id="facilityHours" class="text-gray-700 mt-0.5"></dd>
                 </div>
               </div>
-
             </dl>
-
             <div class="mt-6 flex items-center gap-2 bg-blue-50 rounded-xl px-4 py-3">
               <i class="fa-solid fa-flag text-blue-500"></i>
               <span class="text-sm text-blue-700 font-medium">
@@ -125,41 +106,27 @@
         </div>
       </div>
 
+      <!-- Laporan terkait -->
       <div class="bg-white rounded-2xl shadow">
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 class="font-bold text-gray-800 text-lg">
-            <i class="fa-solid fa-list-check text-blue-500 mr-2"></i>Laporan Terkait
-          </h2>
+          <h2 class="font-bold text-gray-800 text-lg"><i class="fa-solid fa-list-check text-blue-500 mr-2"></i>Laporan Terkait</h2>
         </div>
-
-
         <div id="reportsLoading" class="px-6 py-8 text-center text-gray-400 text-sm">
-          <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 block text-blue-300"></i>
-          Memuat laporan…
+          <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 block text-blue-300"></i>Memuat laporan…
         </div>
-
-
         <div id="reportsEmpty" class="hidden px-6 py-10 text-center text-gray-400">
-          <i class="fa-regular fa-folder-open text-4xl mb-3 block"></i>
-          <p class="text-sm">Belum ada laporan untuk fasilitas ini</p>
+          <i class="fa-regular fa-folder-open text-4xl mb-3 block"></i><p class="text-sm">Belum ada laporan untuk fasilitas ini</p>
         </div>
-
         <div id="reportsList" class="hidden divide-y divide-gray-50"></div>
-
-
         <div id="reportsMoreLink" class="hidden px-6 py-3 text-center">
-          <a id="reportsMoreAnchor" href="#"
-             class="text-xs text-blue-600 hover:underline font-medium">
-            Lihat lebih banyak laporan
-          </a>
+          <a id="reportsMoreAnchor" href="#" class="text-xs text-blue-600 hover:underline font-medium">Lihat lebih banyak laporan</a>
         </div>
       </div>
-
     </div>
   </main>
 
   <footer class="bg-white border-t border-gray-100 py-4 text-center text-xs text-gray-400">
-    © 2024 Smart City. Semua hak dilindungi.
+    © 2026 Smart City. Semua hak dilindungi.
   </footer>
 
   <script src="/js/facility-detail.js"></script>

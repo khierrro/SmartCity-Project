@@ -1,5 +1,5 @@
 // public/js/facilities.js
-
+CitizenGuard.protect();
 const apiFetch = async (url, options = {}) => {
   const res = await fetch(url, {
     credentials: 'include',
