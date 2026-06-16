@@ -1,10 +1,10 @@
-  <!DOCTYPE html>
-  <html lang="id">
+<!doctype html>
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title id="pageTitle">Login - Smart City</title>
-
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -24,7 +24,6 @@
         </p>
       </div>
     </nav>
-
     <main class="container">
       <h3 id="loginTitle" class="text-center mb-5 fw-bold">LOGIN</h3>
 
@@ -57,12 +56,24 @@
                   required
                 />
               </div>
-
+              <div class="mb-3 d-flex justify-content-center">
+                <div
+                  class="g-recaptcha"
+                  data-sitekey="__RECAPTCHA_SITE_KEY__"
+                ></div>
+              </div>
+              <!-- right before the submit button -->
+              <input type="hidden" name="_csrf" value="__CSRF_TOKEN__" />
               <button type="submit" id="loginButton" class="btn w-100 mb-2">
                 Login
               </button>
-
             </form>
+            <div class="text-center mt-3">
+              <p class="text-muted">— atau —</p>
+              <a href="/auth/google" class="btn btn-danger">
+                <i class="fa-brands fa-google me-2"></i> Login dengan Google
+              </a>
+            </div>
           </div>
 
           <!-- Kanan: informasi tambahan -->
@@ -70,13 +81,20 @@
             id="rightPanel"
             class="col-md-6 p-4 d-flex justify-content-center align-items-center flex-column"
           >
-            <h3 id="rightTitle" class="text-center fw-bold">BELUM PUNYA AKUN?</h3>
-            <p id="rightText">Daftar sekarang dan mulai gunakan layanan kami!</p>
-            <a id="registerLink" class="btn btn-outline-primary" href="register.html">REGISTER</a>
-            <div class="text-center mt-3">
-  </div>
+            <h3 id="rightTitle" class="text-center fw-bold">
+              BELUM PUNYA AKUN?
+            </h3>
+            <p id="rightText">
+              Daftar sekarang dan mulai gunakan layanan kami!
+            </p>
+            <a
+              id="registerLink"
+              class="btn btn-outline-primary"
+              href="register.html"
+              >REGISTER</a
+            >
+            <div class="text-center mt-3"></div>
           </div>
-
         </div>
       </section>
     </main>
@@ -90,4 +108,4 @@
     <!-- Login logic (dari file terpisah) -->
     <script src="../js/login.js"></script>
   </body>
-  </html>
+</html>

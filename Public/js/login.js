@@ -68,11 +68,27 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
+  // Get reCAPTCHA token
+  const recaptchaToken = grecaptcha.getResponse();
+  if (!recaptchaToken) {
+    alert("Please complete the reCAPTCHA");
+    return;
+  }
+
+  // Get CSRF token
+  const csrfToken = document.querySelector('input[name="_csrf"]').value;
+
   try {
     const res = await fetch("/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, role })   // ← role dikirim di sini
+      body: JSON.stringify({
+        email,
+        password,
+        role,
+        _csrf: csrfToken,
+        "g-recaptcha-response": recaptchaToken
+      })
     });
 
     const data = await res.json();

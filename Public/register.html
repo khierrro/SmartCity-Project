@@ -4,16 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SMART CITY - REGISTER</title>
-
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <!-- FONTAWESOME -->
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
 
     <!-- BOOTSTRAP CSS -->
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-      rel="stylesheet" />
+      rel="stylesheet"
+    />
 
     <!-- CSS -->
     <link rel="stylesheet" href="css/default.css" />
@@ -29,7 +31,6 @@
         </p>
       </div>
     </nav>
-
     <!-- MAIN -->
     <main class="container">
       <h3 class="text-center mb-5 fw-bold">DAFTAR AKUN KAMU</h3>
@@ -39,7 +40,8 @@
           <!-- KIRI -->
           <div
             class="col-md-6 p-4 d-flex justify-content-center align-items-center flex-column"
-            id="kanan">
+            id="kanan"
+          >
             <h3 class="text-center fw-bold">SUDAH PUNYA AKUN?</h3>
             <p>Gunakan akun anda untuk mengakses dashboard</p>
             <a class="btn btn-outline-primary" href="login.html">LOGIN</a>
@@ -47,6 +49,9 @@
 
           <!-- KANAN -->
           <div class="col-md-6 p-4 border-end" id="kiri">
+            <!-- Tempat menampilkan pesan error/sukses -->
+            <div id="message"></div>
+
             <form id="registerForm">
               <div class="mb-3">
                 <label>Username</label>
@@ -55,7 +60,9 @@
                   id="name"
                   class="form-control"
                   placeholder="Buat Username"
-                  required />
+                  required
+                />
+                <div id="nameFeedback" class="mt-1 small"></div>
               </div>
 
               <div class="mb-3">
@@ -65,7 +72,9 @@
                   id="email"
                   class="form-control"
                   placeholder="Buat Email"
-                  required />
+                  required
+                />
+                <div id="emailFeedback" class="mt-1 small"></div>
               </div>
 
               <div class="mb-3">
@@ -75,7 +84,9 @@
                   id="password"
                   class="form-control"
                   placeholder="Buat Password"
-                  required />
+                  required
+                />
+                <div id="passwordFeedback" class="mt-2 small"></div>
               </div>
 
               <div class="mb-3">
@@ -84,7 +95,9 @@
                   type="text"
                   id="phone"
                   class="form-control"
-                  placeholder="Masukkan No HP" />
+                  placeholder="Masukkan No HP"
+                />
+                <div id="phoneFeedback" class="mt-1 small"></div>
               </div>
 
               <div class="mb-3">
@@ -93,20 +106,28 @@
                   type="text"
                   id="address"
                   class="form-control"
-                  placeholder="Masukkan Alamat" />
+                  placeholder="Masukkan Alamat"
+                />
+                <div id="addressFeedback" class="mt-1 small"></div>
               </div>
-
-              <div class="mb-3">
-                <label>Role</label>
-                <select id="role" class="form-control">
-                  <option value="citizen">Citizen</option>
-                </select>
+              <div class="mb-3 d-flex justify-content-center">
+                <div
+                  class="g-recaptcha"
+                  data-sitekey="__RECAPTCHA_SITE_KEY__"
+                ></div>
               </div>
-
+              <!-- right before the submit button -->
+              <input type="hidden" name="_csrf" value="__CSRF_TOKEN__" />
               <button type="submit" class="btn btn-primary w-100 mb-2">
                 Register
               </button>
             </form>
+            <div class="text-center mt-3">
+              <p class="text-muted">— atau —</p>
+              <a href="/auth/google" class="btn btn-danger">
+                <i class="fa-brands fa-google me-2"></i> Daftar dengan Google
+              </a>
+            </div>
           </div>
         </div>
       </section>

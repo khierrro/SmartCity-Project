@@ -2,9 +2,12 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
+const { registerRules, loginRules, profileRules, handleValidationErrors } = require('../middleware/validators');
+const requireRecaptcha = require('../middleware/recaptcha');
 
+const { authLimiter } = require('../middleware/rateLimiter');
 // POST /register
-router.post('/register', async (req, res) => {
+router.post('/register',authLimiter, registerRules, handleValidationErrors,requireRecaptcha, async (req, res) => {
   try {
     const { name, email, password, phone, address } = req.body;
 
@@ -36,7 +39,7 @@ router.post('/register', async (req, res) => {
 });
 
 // POST /login
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, loginRules, handleValidationErrors,requireRecaptcha, async (req, res) => {
   try {
     const { email, password, role: requiredRole } = req.body;
 
@@ -109,7 +112,7 @@ router.get('/me', (req, res) => {
 });
 
 // PUT /profile (HANYA SATU)
-router.put('/profile', async (req, res) => {
+router.put('/profile',profileRules,handleValidationErrors ,async (req, res) => {
   if (!req.session.user) {
     return res.status(401).json({ message: 'Silakan login terlebih dahulu' });
   }
