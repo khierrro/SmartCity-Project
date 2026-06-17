@@ -3,11 +3,10 @@ const path = require("path");
 const sequelize = require("./config/database");
 const sessionMiddleware = require("./middleware/session");
 require("dotenv").config();
-const strictActionLimiter = require("./middleware/actionLimiterStrict");
+const { authLimiter, readLimiter, actionLimiter, strictActionLimiter } = require('./middleware/rateLimiter');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const fs = require("fs");
-const { authLimiter, actionLimiter } = require("./middleware/rateLimiter");
 const cookieParser = require("cookie-parser");
 
 app.use(cookieParser());
@@ -43,8 +42,9 @@ app.use(
       fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
       connectSrc: [
         "'self'",
+        "https://cdn.jsdelivr.net",
         "https://www.google.com",
-        "https://www.gstatic.com"
+        "https://www.gstatic.com",
       ],
     },
   }),
@@ -131,11 +131,6 @@ app.get(
     }
   },
 );
-const authRoutes = require("./routes/authRoutes");
-app.use("/", authRoutes);
-// ────────────────────────────────────────────────────────
-// 6. CSRF PROTECTION (kecualikan Google OAuth)
-// ────────────────────────────────────────────────────────
 const csrf = require("csurf");
 const csrfProtection = csrf({
   cookie: {
@@ -145,13 +140,20 @@ const csrfProtection = csrf({
   },
 });
 app.use(csrfProtection);
-app.use((req, res, next) => {
-  res.locals.csrfToken = req.csrfToken();
-  next();
+const authRoutes = require("./routes/authRoutes");
+app.use('/api', (req, res, next) => {
+  if (req.method === 'GET') return readLimiter(req, res, next);
+  return actionLimiter(req, res, next);
 });
+app.use("/", authRoutes);
+// ────────────────────────────────────────────────────────
+// 6. CSRF PROTECTION (kecualikan Google OAuth)
+// ────────────────────────────────────────────────────────
+
 // ============================
 // SERVER‑SIDE NAVBAR INJECTION (Tailwind‑safe)
 // ============================
+
 app.get("/pages/admin.html", (req, res, next) => {
   if (!req.session.user || req.session.user.role !== "admin")
     return res.redirect("/login.html?role=admin");
@@ -176,7 +178,7 @@ app.use((req, res, next) => {
 
     const isAdmin = req.session.user && req.session.user.role === "admin";
     const isLoggedIn = !!req.session.user;
-
+    const csrfToken = req.csrfToken();
     let navbar = "";
 
     if (isAdmin) {
@@ -209,6 +211,7 @@ app.use((req, res, next) => {
                   </div>
                   <span style="font-size:0.875rem;color:#555">Admin: ${req.session.user.name}</span>
                   <form action="/logout" method="POST" style="margin:0">
+                    <input type="hidden" name="_csrf" value="${req.csrfToken()}">
                     <button type="submit" style="background:none;border:1px solid #ef4444;color:#ef4444;padding:0.25rem 0.75rem;border-radius:0.25rem;font-size:0.875rem;cursor:pointer">
                       <i class="fas fa-sign-out-alt"></i> Keluar
                     </button>
@@ -238,6 +241,7 @@ app.use((req, res, next) => {
                       <i class="fa-regular fa-circle-user"></i> Profil
                     </a>
                     <form action="/logout" method="POST" style="margin:0">
+                      <input type="hidden" name="_csrf" value="${req.csrfToken()}">
                       <button type="submit" style="background:none;border:1px solid #ef4444;color:#ef4444;padding:0.25rem 0.75rem;border-radius:0.25rem;font-size:0.875rem;cursor:pointer">
                         <i class="fas fa-sign-out-alt"></i> Keluar
                       </button>
@@ -280,26 +284,37 @@ app.use((req, res, next) => {
 
       result = result.replace("<!--Breadcrumb-->", breadcrumb);
     }
-
+    // In the fs.readFile callback, before res.send(result):
+    result = result.replace(
+      "</head>",
+      `<meta name="csrf-token" content="${req.csrfToken()}">\n</head>`,
+    );
+    result = result.replace(
+      "</body>",
+      `<script src="/js/api.js"></script>\n</body>`,
+    );
     // Kirim respons SEKALI
     res.send(result);
   });
 });
 // ── Inject reCAPTCHA & CSRF into public auth pages ──
-const publicAuthPages = ['/login.html', '/register.html'];
+const publicAuthPages = ["/login.html", "/register.html"];
 
 app.use((req, res, next) => {
   if (!publicAuthPages.includes(req.path)) return next();
 
-  const filePath = path.join(__dirname, 'public', req.path);
+  const filePath = path.join(__dirname, "public", req.path);
   if (!fs.existsSync(filePath)) return next();
 
-  fs.readFile(filePath, 'utf8', (err, html) => {
+  fs.readFile(filePath, "utf8", (err, html) => {
     if (err) return next();
-
+    console.log('CSRF token generated:', req.csrfToken()); 
     // Replace only reCAPTCHA key & CSRF token – NO navbar
-    let result = html.replace(/__RECAPTCHA_SITE_KEY__/g, process.env.RECAPTCHA_SITE_KEY || '');
-    result = result.replace(/__CSRF_TOKEN__/g, res.locals.csrfToken || '');
+    let result = html.replace(
+      /__RECAPTCHA_SITE_KEY__/g,
+      process.env.RECAPTCHA_SITE_KEY || "",
+    );
+    result = result.replace(/__CSRF_TOKEN__/g, res.locals.csrfToken || "");
 
     res.send(result);
   });
@@ -334,7 +349,7 @@ app.use("/api/admin", adminRoutes);
 
 // Report routes (search, detail, create, status, delete, vote)
 const reportRoutes = require("./routes/reports");
-app.use("/api/reports", actionLimiter, reportRoutes);
+app.use("/api/reports",strictActionLimiter, reportRoutes);
 
 // Comment routes (nested under reports)
 const commentRoutes = require("./routes/comments");
@@ -342,7 +357,7 @@ app.use("/api/reports/:id/comments", strictActionLimiter, commentRoutes);
 
 //Facility routes
 const facilityRoutes = require("./Routes/facilityRoutes");
-app.use("/api/facilities", facilityRoutes);
+app.use("/api/facilities",actionLimiter, facilityRoutes);
 
 // -------------------- PUBLIC APIs (before 404) --------------------
 // Public facilities list

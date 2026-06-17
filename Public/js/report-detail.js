@@ -4,16 +4,6 @@ let reportId = null;
 let currentUser = null;
 let replyToId = null;
 
-const apiFetch = async (url, options = {}) => {
-  const res = await fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
-  const data = await res.json();
-  if (!data?.success && res.status === 401) {
-    window.location.href = '/login.html?role=citizen';
-    return null;
-  }
-  return data;
-};
-
 const fmtDate = d => d ? new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
@@ -170,7 +160,7 @@ async function flagReport() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menandai...';
 
   try {
-    const res = await fetch(`/api/reports/${reportId}/flag`, {
+    const res = await apiFetch(`/api/reports/${reportId}/flag`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason })
