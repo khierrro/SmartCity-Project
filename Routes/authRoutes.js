@@ -7,7 +7,7 @@ const requireRecaptcha = require('../middleware/recaptcha');
 
 const { authLimiter } = require('../middleware/rateLimiter');
 // POST /register
-router.post('/register',authLimiter, registerRules, handleValidationErrors,requireRecaptcha, async (req, res) => {
+router.post('/register',authLimiter, registerRules, handleValidationErrors,requireRecaptcha('register'), async (req, res) => {
   try {
     const { name, email, password, phone, address } = req.body;
 
@@ -39,7 +39,7 @@ router.post('/register',authLimiter, registerRules, handleValidationErrors,requi
 });
 
 // POST /login
-router.post('/login', authLimiter, loginRules, handleValidationErrors,requireRecaptcha, async (req, res) => {
+router.post('/login', authLimiter, loginRules, handleValidationErrors,requireRecaptcha('login'), async (req, res) => {
   try {
     const { email, password, role: requiredRole } = req.body;
 

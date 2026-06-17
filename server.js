@@ -308,13 +308,21 @@ app.use((req, res, next) => {
 
   fs.readFile(filePath, "utf8", (err, html) => {
     if (err) return next();
-    console.log('CSRF token generated:', req.csrfToken()); 
-    // Replace only reCAPTCHA key & CSRF token – NO navbar
-    let result = html.replace(
-      /__RECAPTCHA_SITE_KEY__/g,
-      process.env.RECAPTCHA_SITE_KEY || "",
+
+    const csrfToken = req.csrfToken(); // ← ONE call
+
+    let result = html.replace(/__RECAPTCHA_SITE_KEY__/g, process.env.RECAPTCHA_SITE_KEY || "");
+    result = result.replace(/__CSRF_TOKEN__/g, csrfToken);
+
+    // ← Add these two, same as /pages/*.html middleware
+    result = result.replace(
+      "</head>",
+      `<meta name="csrf-token" content="${csrfToken}">\n</head>`
     );
-    result = result.replace(/__CSRF_TOKEN__/g, res.locals.csrfToken || "");
+    result = result.replace(
+      "</body>",
+      `<script src="/js/api.js"></script>\n</body>`
+    );
 
     res.send(result);
   });
@@ -349,11 +357,11 @@ app.use("/api/admin", adminRoutes);
 
 // Report routes (search, detail, create, status, delete, vote)
 const reportRoutes = require("./routes/reports");
-app.use("/api/reports",strictActionLimiter, reportRoutes);
+app.use("/api/reports",actionLimiter, reportRoutes);
 
 // Comment routes (nested under reports)
 const commentRoutes = require("./routes/comments");
-app.use("/api/reports/:id/comments", strictActionLimiter, commentRoutes);
+app.use("/api/reports/:id/comments", actionLimiter, commentRoutes);
 
 //Facility routes
 const facilityRoutes = require("./Routes/facilityRoutes");
