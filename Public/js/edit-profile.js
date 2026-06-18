@@ -1,6 +1,5 @@
 // script/edit-profile.js
 document.addEventListener('DOMContentLoaded', async () => {
-  // Autofill address & phone from session
   try {
     const res = await fetch('/me');
     if (!res.ok) throw new Error('Belum login');

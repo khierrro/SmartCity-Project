@@ -1,37 +1,68 @@
 const express = require("express");
 const path = require("path");
 const sequelize = require("./config/database");
-const sessionMiddleware = require("./middleware/session");
 require("dotenv").config();
-const { authLimiter, readLimiter, actionLimiter, strictActionLimiter } = require('./middleware/rateLimiter');
+const {
+  authLimiter,
+  readLimiter,
+  actionLimiter,
+  strictActionLimiter,
+} = require("./middleware/rateLimiter");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const fs = require("fs");
 const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 
 app.use(cookieParser());
-// ────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────
+// JWT Middleware – decode token from cookie
+// ─────────────────────────────────────────
+app.use((req, res, next) => {
+  const token = req.cookies.token;
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // 🔒 Safety: never expose password or timestamps
+      delete decoded.password;
+      delete decoded.created_at;
+      delete decoded.updated_at;
+      req.user = decoded;
+    } catch (err) {
+      res.clearCookie("token");
+      req.user = null;
+    }
+  } else {
+    req.user = null;
+  }
+  next();
+});
+
+// ─────────────────────────────────────────
 // 1. HELMET & CONTENT SECURITY POLICY
-// ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────
 const helmet = require("helmet");
+app.use((req, res, next) => {
+  res.locals.cspNonce = require("crypto").randomBytes(16).toString("base64");
+  next();
+});
 app.use(helmet());
+
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: [
-        "'self'",
-        "https://cdn.tailwindcss.com",
-        "https://cdnjs.cloudflare.com",
-        "https://cdn.jsdelivr.net",
-        "https://www.google.com", // ← reCAPTCHA
-        "https://www.gstatic.com", // ← reCAPTCHA
-        "'unsafe-inline'",
-      ],
-      frameSrc: [
-        "'self'",
-        "https://www.google.com", // ← reCAPTCHA iframe
-      ],
+  "'self'",
+  (req, res) => `'nonce-${res.locals.cspNonce}'`,
+  "https://cdn.tailwindcss.com",
+  "https://cdnjs.cloudflare.com",
+  "https://cdn.jsdelivr.net",
+  "https://www.google.com",
+  "https://www.gstatic.com",
+],
+      frameSrc: ["'self'", "https://www.google.com"],
       styleSrc: [
         "'self'",
         "https://cdn.jsdelivr.net",
@@ -47,18 +78,18 @@ app.use(
         "https://www.gstatic.com",
       ],
     },
-  }),
+  })
 );
-// ────────────────────────────────────────────────────────
-// 3. BODY PARSER (sebelum session)
-// ────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────
+// 2. BODY PARSER
+// ─────────────────────────────────────────
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(sessionMiddleware);
 
-// ────────────────────────────────────────────────────────
-// 5. PASSPORT (Google OAuth)
-// ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────
+// 3. PASSPORT (Google OAuth)
+// ─────────────────────────────────────────
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User = require("./models/User");
@@ -78,7 +109,7 @@ passport.use(
 
         let user = await User.findOne({ where: { email } });
         if (!user) {
-          const randomPassword = Math.random().toString(36).slice(-10);
+         const randomPassword = require("crypto").randomBytes(16).toString("hex");
           const hashed = await bcrypt.hash(randomPassword, 10);
           user = await User.create({
             name,
@@ -87,36 +118,31 @@ passport.use(
             role: "citizen",
           });
         }
+        // Pass the full user instance (we'll extract needed fields later)
         done(null, user);
       } catch (err) {
         done(err);
       }
-    },
-  ),
+    }
+  )
 );
-
-passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser(async (id, done) => {
-  try {
-    const user = await User.findByPk(id);
-    done(null, user);
-  } catch (err) {
-    done(err);
-  }
-});
-
+// Only need initialize() for the strategy itself
 app.use(passport.initialize());
-app.use(passport.session());
+
+// ─────────────────────────────────────────
+// 4. GOOGLE OAUTH ROUTES
+// ─────────────────────────────────────────
 app.get(
   "/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] }),
+  passport.authenticate("google", { session: false, scope: ["profile", "email"] })
 );
 
 app.get(
   "/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: "/login.html" }),
+  passport.authenticate("google", { session:false,failureRedirect: "/login.html" }),
   (req, res) => {
-    req.session.user = {
+    // Extract only safe fields from req.user (the full model)
+    const safeUser = {
       id: req.user.id,
       name: req.user.name,
       email: req.user.email,
@@ -124,47 +150,85 @@ app.get(
       phone: req.user.phone,
       address: req.user.address,
     };
-    if (req.user.role === "admin") {
+
+    // Create JWT and set as cookie
+    const token = jwt.sign(safeUser, process.env.JWT_SECRET, { expiresIn: "1d" });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false,      // true in production
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    // Redirect to appropriate dashboard
+    if (safeUser.role === "admin") {
       res.redirect("/pages/admin.html");
     } else {
       res.redirect("/pages/menu.html");
     }
-  },
+  }
 );
-const csrf = require("csurf");
-const csrfProtection = csrf({
-  cookie: {
+
+// ─────────────────────────────────────────
+// 5. CSRF PROTECTION (cookie-based, unchanged)
+// ─────────────────────────────────────────
+const { doubleCsrf } = require("csrf-csrf");
+
+const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
+  getSecret: () => process.env.CSRF_SECRET,
+  getSessionIdentifier: (req) => req.user?.id?.toString() ?? req.ip,
+  cookieName: "x-csrf-token",
+  cookieOptions: {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
   },
+  getTokenFromRequest: (req) => {
+    return req.body?._csrf        // form submissions
+      || req.headers['x-csrf-token']; // AJAX requests
+  },
 });
-app.use(csrfProtection);
+app.post("/logout", (req, res) => {
+  res.clearCookie("token", { path: "/" });
+  res.clearCookie("connect.sid", { path: "/" });
+  res.redirect("/index.html");
+});
+
+app.use(doubleCsrfProtection);
+
+app.use((req, res, next) => {
+  req.csrfToken = () => generateCsrfToken(req, res);
+  next();
+});
+
+
+// ─────────────────────────────────────────
+// 6. RATE LIMITER + ROUTES
+// ─────────────────────────────────────────
 const authRoutes = require("./routes/authRoutes");
-app.use('/api', (req, res, next) => {
-  if (req.method === 'GET') return readLimiter(req, res, next);
+app.use("/api", (req, res, next) => {
+  if (req.method === "GET") return readLimiter(req, res, next);
   return actionLimiter(req, res, next);
 });
 app.use("/", authRoutes);
-// ────────────────────────────────────────────────────────
-// 6. CSRF PROTECTION (kecualikan Google OAuth)
-// ────────────────────────────────────────────────────────
 
-// ============================
-// SERVER‑SIDE NAVBAR INJECTION (Tailwind‑safe)
-// ============================
-
+// ─────────────────────────────────────────
+// 7. PAGE GUARDS (now using req.user)
+// ─────────────────────────────────────────
 app.get("/pages/admin.html", (req, res, next) => {
-  if (!req.session.user || req.session.user.role !== "admin")
+  if (!req.user || req.user.role !== "admin")
     return res.redirect("/login.html?role=admin");
   next();
 });
 app.get("/pages/admin-search.html", (req, res, next) => {
-  if (!req.session.user || req.session.user.role !== "admin")
+  if (!req.user || req.user.role !== "admin")
     return res.redirect("/login.html?role=admin");
   next();
 });
 
+// ─────────────────────────────────────────
+// 8. SERVER‑SIDE NAVBAR INJECTION (uses req.user)
+// ─────────────────────────────────────────
 app.use((req, res, next) => {
   if (!req.path.startsWith("/pages/") || !req.path.endsWith(".html"))
     return next();
@@ -176,8 +240,9 @@ app.use((req, res, next) => {
   fs.readFile(filePath, "utf8", (err, html) => {
     if (err) return next();
 
-    const isAdmin = req.session.user && req.session.user.role === "admin";
-    const isLoggedIn = !!req.session.user;
+    const user = req.user || null;               // from JWT
+    const isAdmin = user && user.role === "admin";
+    const isLoggedIn = !!user;
     const csrfToken = req.csrfToken();
     let navbar = "";
 
@@ -209,9 +274,9 @@ app.use((req, res, next) => {
                       </div>
                     </div>
                   </div>
-                  <span style="font-size:0.875rem;color:#555">Admin: ${req.session.user.name}</span>
+                  <span style="font-size:0.875rem;color:#555">Admin: ${user.name}</span>
                   <form action="/logout" method="POST" style="margin:0">
-                    <input type="hidden" name="_csrf" value="${req.csrfToken()}">
+                    <input type="hidden" name="_csrf" value="${csrfToken}">
                     <button type="submit" style="background:none;border:1px solid #ef4444;color:#ef4444;padding:0.25rem 0.75rem;border-radius:0.25rem;font-size:0.875rem;cursor:pointer">
                       <i class="fas fa-sign-out-alt"></i> Keluar
                     </button>
@@ -236,12 +301,12 @@ app.use((req, res, next) => {
                   ${
                     isLoggedIn
                       ? `
-                    <span style="font-size:0.875rem;color:#555">Halo, ${req.session.user.name}</span>
+                    <span style="font-size:0.875rem;color:#555">Halo, ${user.name}</span>
                     <a href="/pages/profile.html" style="text-decoration:none;color:#2563eb;border:1px solid #2563eb;padding:0.25rem 0.75rem;border-radius:0.25rem;font-size:0.875rem">
                       <i class="fa-regular fa-circle-user"></i> Profil
                     </a>
                     <form action="/logout" method="POST" style="margin:0">
-                      <input type="hidden" name="_csrf" value="${req.csrfToken()}">
+                      <input type="hidden" name="_csrf" value="${csrfToken}">
                       <button type="submit" style="background:none;border:1px solid #ef4444;color:#ef4444;padding:0.25rem 0.75rem;border-radius:0.25rem;font-size:0.875rem;cursor:pointer">
                         <i class="fas fa-sign-out-alt"></i> Keluar
                       </button>
@@ -256,9 +321,7 @@ app.use((req, res, next) => {
             </nav>`;
     }
 
-    // Ganti placeholder navbar
     let result = html.replace("<!--Navbar-->", navbar);
-    // Ganti placeholder breadcrumb (jika ada)
     if (html.includes("<!--Breadcrumb-->")) {
       const breadcrumb = isAdmin
         ? `
@@ -281,40 +344,9 @@ app.use((req, res, next) => {
                     <span id="breadcrumbName" class="text-gray-700 font-medium">Detail</span>
                   </div>
                 </div>`;
-
       result = result.replace("<!--Breadcrumb-->", breadcrumb);
     }
-    // In the fs.readFile callback, before res.send(result):
-    result = result.replace(
-      "</head>",
-      `<meta name="csrf-token" content="${req.csrfToken()}">\n</head>`,
-    );
-    result = result.replace(
-      "</body>",
-      `<script src="/js/api.js"></script>\n</body>`,
-    );
-    // Kirim respons SEKALI
-    res.send(result);
-  });
-});
-// ── Inject reCAPTCHA & CSRF into public auth pages ──
-const publicAuthPages = ["/login.html", "/register.html"];
 
-app.use((req, res, next) => {
-  if (!publicAuthPages.includes(req.path)) return next();
-
-  const filePath = path.join(__dirname, "public", req.path);
-  if (!fs.existsSync(filePath)) return next();
-
-  fs.readFile(filePath, "utf8", (err, html) => {
-    if (err) return next();
-
-    const csrfToken = req.csrfToken(); // ← ONE call
-
-    let result = html.replace(/__RECAPTCHA_SITE_KEY__/g, process.env.RECAPTCHA_SITE_KEY || "");
-    result = result.replace(/__CSRF_TOKEN__/g, csrfToken);
-
-    // ← Add these two, same as /pages/*.html middleware
     result = result.replace(
       "</head>",
       `<meta name="csrf-token" content="${csrfToken}">\n</head>`
@@ -323,17 +355,46 @@ app.use((req, res, next) => {
       "</body>",
       `<script src="/js/api.js"></script>\n</body>`
     );
-
     res.send(result);
   });
 });
+
+// ── Inject reCAPTCHA & CSRF into public auth pages (unchanged) ──
+const publicAuthPages = ["/login.html", "/register.html"];
+app.use((req, res, next) => {
+  if (!publicAuthPages.includes(req.path)) return next();
+  const filePath = path.join(__dirname, "public", req.path);
+  if (!fs.existsSync(filePath)) return next();
+
+  fs.readFile(filePath, "utf8", (err, html) => {
+    if (err) return next();
+    const csrfToken = req.csrfToken();
+    let result = html.replace(
+      /__RECAPTCHA_SITE_KEY__/g,
+      process.env.RECAPTCHA_SITE_KEY || ""
+    );
+    result = result.replace(/__CSRF_TOKEN__/g, csrfToken);
+    result = result.replace(
+      "</head>",
+      `<meta name="csrf-token" content="${csrfToken}">\n</head>`
+    );
+    result = result.replace(
+      "</body>",
+      `<script src="/js/api.js"></script>\n</body>`
+    );
+    res.send(result);
+  });
+});
+
+// ─────────────────────────────────────────
 // Static files
+// ─────────────────────────────────────────
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(express.static(path.join(__dirname, "public")));
 
-// Root redirect
+// Root redirect (now uses req.user)
 app.get("/", (req, res) => {
-  if (req.session.user) return res.redirect("/pages/menu.html");
+  if (req.user) return res.redirect("/pages/menu.html");
   res.redirect("/index.html");
 });
 
@@ -347,52 +408,51 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-// Citizen flagging
+// ─────────────────────────────────────────
+// ROUTES (same as before)
+// ─────────────────────────────────────────
 const citizenFlagRoutes = require("./routes/citizenflag");
 app.use("/api/reports", citizenFlagRoutes);
 
-// Admin routes
 const adminRoutes = require("./routes/admin");
 app.use("/api/admin", adminRoutes);
 
-// Report routes (search, detail, create, status, delete, vote)
 const reportRoutes = require("./routes/reports");
-app.use("/api/reports",actionLimiter, reportRoutes);
+app.use("/api/reports", actionLimiter, reportRoutes);
 
-// Comment routes (nested under reports)
 const commentRoutes = require("./routes/comments");
 app.use("/api/reports/:id/comments", actionLimiter, commentRoutes);
 
-//Facility routes
 const facilityRoutes = require("./Routes/facilityRoutes");
-app.use("/api/facilities",actionLimiter, facilityRoutes);
+app.use("/api/facilities", actionLimiter, facilityRoutes);
 
-// -------------------- PUBLIC APIs (before 404) --------------------
-// Public facilities list
+// Public facilities list (unchanged)
 app.get("/api/facilities", async (req, res) => {
   const Facility = require("./models/Facility");
   const facilities = await Facility.findAll({ order: [["name", "ASC"]] });
   res.json(facilities);
 });
 
-// Dynamic report detail page (with navbar injection)
+// Dynamic report detail page
 app.get("/report-detail", (req, res) => {
-  // Set the URL to /pages/report-detail.html internally
   req.url = "/pages/report-detail.html";
   app.handle(req, res);
 });
 
-// -------------------- 404 handler (ALWAYS LAST) --------------------
+// 404
 app.use((req, res) => {
   res.status(404).json({ error: "Halaman tidak ditemukan" });
 });
+
+// ─────────────────────────────────────────
 // Start server
+// ─────────────────────────────────────────
 sequelize
   .authenticate()
   .then(() => {
     console.log("Database terkoneksi (Sequelize)");
     app.listen(PORT, () =>
-      console.log(`Server berjalan di http://localhost:${PORT}`),
+      console.log(`Server berjalan di http://localhost:${PORT}`)
     );
   })
   .catch((err) => console.error("Gagal koneksi database:", err));

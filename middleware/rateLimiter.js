@@ -3,7 +3,8 @@ const rateLimit = require('express-rate-limit');
 // Auth: login/register — strict, 5 attempts per 15 min
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 5,
+  skipSuccessfulRequests: true, // don't count successful logins
   message: { success: false, message: 'Terlalu banyak percobaan, coba lagi nanti.' }
 });
 

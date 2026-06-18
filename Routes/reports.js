@@ -1,62 +1,75 @@
-  const express = require('express');
-  const router = express.Router();
-  const multer = require('multer');                     // ← tambahkan
-  const path = require('path');                         // ← tambahkan
-  const isAuth = require('../middleware/isAuth');
-  const isAdmin = require('../middleware/isAdmin');
-  const reportController = require('../controllers/reportController');
-  const { Report, Facility } = require('../models');
+const express = require("express");
+const router = express.Router();
+const multer = require("multer");
+const path = require("path");
+const isAuth = require("../middleware/isAuth");
+const isAdmin = require("../middleware/isAdmin");
+const reportController = require("../controllers/reportController");
+const { Report, Facility } = require("../models");
 
-  // Konfigurasi penyimpanan gambar laporan
-  const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '..', 'uploads', 'reports');
-    // Ensure the folder exists
-    require('fs').mkdirSync(uploadDir, { recursive: true });
+// Konfigurasi penyimpanan gambar laporan
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, "..", "uploads", "reports");
+    require("fs").mkdirSync(uploadDir, { recursive: true });
     cb(null, uploadDir);
-  },  // folder di luar public
-    filename: (req, file, cb) => {
-      const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, unique + path.extname(file.originalname));
-    }
-  });
-  const upload = multer({ storage });
+  },
+  filename: (req, file, cb) => {
+    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, unique + path.extname(file.originalname));
+  },
+});
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|webp/;
+    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowed.test(file.mimetype);
+    if (ext && mime) return cb(null, true);
+    cb(new Error('Hanya file gambar yang diizinkan'));
+  },
+  limits: { fileSize: 2 * 1024 * 1024 }
+});
 
-  router.get('/search', reportController.searchReports);
+router.get("/search", reportController.searchReports);
 
-  // Rute milik user yang login
-  router.get('/my/stats', isAuth, async (req, res) => {
-    try {
-      const userId = req.session.user.id;
-      const total = await Report.count({ where: { user_id: userId } });
-      const resolved = await Report.count({ where: { user_id: userId, status: 'resolved' } });
-      const inProgress = await Report.count({ where: { user_id: userId, status: 'in_progress' } });
-      res.json({ total, resolved, in_progress: inProgress });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  router.get('/my', isAuth, async (req, res) => {
+// Rute milik user yang login
+router.get("/my/stats", isAuth, async (req, res) => {
   try {
-    const userId = req.session.user.id;
+    const userId = req.user.id; 
+    const total = await Report.count({ where: { user_id: userId } });
+    const resolved = await Report.count({
+      where: { user_id: userId, status: "resolved" },
+    });
+    const inProgress = await Report.count({
+      where: { user_id: userId, status: "in_progress" },
+    });
+    res.json({ total, resolved, in_progress: inProgress });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/my", isAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
     const reports = await Report.findAll({
       where: { user_id: userId },
-      include: [{ model: Facility, attributes: ['name'] }],
-      order: [['created_at', 'DESC']]
+      include: [{ model: Facility, attributes: ["name"] }],
+      order: [["created_at", "DESC"]],
     });
-    const formatted = reports.map(r => ({
+    const formatted = reports.map((r) => ({
       id: r.id,
       title: r.title,
-      description: r.description,        // ← add
-      location_text: r.location_text,    // ← add
+      description: r.description,
+      location_text: r.location_text,
       facility: r.Facility ? r.Facility.name : null,
-      facility_id: r.facility_id,        // ← add
+      facility_id: r.facility_id,
       status: r.status,
       vote_count: r.vote_count,
-      image_path: r.image_path,          // ← add
-      user_id: r.user_id,                // ← add (for ownership check)
-      created_at: r.created_at
+      image_path: r.image_path,
+      user_id: r.user_id,
+      created_at: r.created_at,
     }));
     res.json({ success: true, data: formatted });
   } catch (err) {
@@ -64,13 +77,17 @@
   }
 });
 
-  // ---------- RUTE DENGAN PARAMETER ----------
-  router.get('/:id',          isAuth, reportController.getReportById);
-  router.post('/', isAuth, upload.single('image'), reportController.createReport);
-  router.put('/:id/status',   isAdmin, reportController.updateStatus);
-  // Citizen edit & delete own reports
-  router.put('/:id',    isAuth, upload.single('image'), reportController.updateOwnReport);
-  router.delete('/:id', isAuth, reportController.deleteOwnReport);
-  router.post('/:id/vote',    isAuth, reportController.toggleVote);
+// ---------- RUTE DENGAN PARAMETER ----------
+router.get("/:id", isAuth, reportController.getReportById);
+router.post("/", isAuth, upload.single("image"), reportController.createReport);
+router.put("/:id/status", isAdmin, reportController.updateStatus);
+router.put(
+  "/:id",
+  isAuth,
+  upload.single("image"),
+  reportController.updateOwnReport,
+);
+router.delete("/:id", isAuth, reportController.deleteOwnReport);
+router.post("/:id/vote", isAuth, reportController.toggleVote);
 
-  module.exports = router;
+module.exports = router;
