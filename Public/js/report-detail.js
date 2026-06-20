@@ -195,51 +195,41 @@ async function loadComments() {
     const data = await apiFetch(`${API}/reports/${reportId}/comments`);
     const comments = data?.data || [];
     document.getElementById('commentCount').textContent = `(${comments.length})`;
+
     if (comments.length === 0) {
       list.innerHTML = '<p class="text-muted">Belum ada komentar.</p>';
       return;
     }
+
     list.innerHTML = comments.map(c => renderComment(c)).join('');
-    document.querySelectorAll('.reply-btn').forEach(btn => {
+
+    // ── Reply buttons ──
+    list.querySelectorAll('.reply-btn').forEach(btn => {
       btn.addEventListener('click', () => startReply(btn.dataset.id, btn.dataset.name));
     });
+
+    // ── Edit / Delete / Perform / Cancel via delegation ──
+    list.addEventListener('click', (e) => {
+      const editBtn = e.target.closest('.edit-comment-btn');
+      const deleteBtn = e.target.closest('.delete-comment-btn');
+      const performBtn = e.target.closest('.perform-edit-btn');
+      const cancelBtn = e.target.closest('.cancel-edit-btn');
+
+      if (editBtn) {
+        e.preventDefault();
+        startEditComment(editBtn.dataset.id, editBtn.dataset.content);
+      }
+      if (deleteBtn) {
+        e.preventDefault();
+        deleteComment(deleteBtn.dataset.id);
+      }
+      if (performBtn) performEdit(performBtn.dataset.id);
+      if (cancelBtn) loadComments();
+    });
+
   } catch (err) {
     list.innerHTML = '<p class="text-danger">Gagal memuat komentar.</p>';
   }
-}
-
-function renderComment(c, depth = 0) {
-  const replies = (c.Replies || []).map(r => renderComment(r, depth + 1)).join('');
-  const isOwner = currentUser && currentUser.id === c.user_id;
-  const showActions = c.can_edit;   // ← now from backend
-
-  return `
-    <div class="ms-${depth * 3} border-start border-2 ps-3 mb-3">
-      <div class="bg-light rounded p-2">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <strong class="small">${esc(c.Author?.name || 'Anonim')}</strong>
-            <small class="text-muted ms-2">${fmtDate(c.created_at)}</small>
-            ${c.is_edited ? '<span class="text-muted fst-italic small ms-1">(diedit)</span>' : ''}
-          </div>
-          ${showActions ? `
-            <div class="dropdown">
-              <button class="btn btn-link btn-sm text-muted" data-bs-toggle="dropdown">
-                <i class="fas fa-ellipsis-v"></i>
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="#" onclick="startEditComment(${c.id}, '${esc(c.content)}')"><i class="fas fa-pen me-2"></i>Edit</a></li>
-                <li><a class="dropdown-item text-danger" href="#" onclick="deleteComment(${c.id})"><i class="fas fa-trash me-2"></i>Hapus</a></li>
-              </ul>
-            </div>
-          ` : ''}
-        </div>
-        <p class="mb-1 small" id="comment-text-${c.id}">${esc(c.content)}</p>
-        ${currentUser ? `<button class="reply-btn btn btn-link btn-sm p-0" data-id="${c.id}" data-name="${esc(c.Author?.name || 'Anonim')}">Balas</button>` : ''}
-      </div>
-      ${replies}
-    </div>
-  `;
 }
 async function editComment(commentId, currentContent) {
   const newContent = prompt('Edit komentar Anda:', currentContent);
@@ -308,20 +298,19 @@ function startEditComment(commentId, currentContent) {
   const textEl = document.getElementById(`comment-text-${commentId}`);
   if (!textEl) return;
 
-  // Replace the comment text with a textarea and Save/Cancel buttons
   textEl.innerHTML = `
-    <textarea id="edit-text-${commentId}" class="form-control form-control-sm mb-1" rows="2" style="resize:none;">${currentContent}</textarea>
+    <textarea id="edit-text-${commentId}" class="form-control form-control-sm mb-1"
+      rows="2" style="resize:none;">${currentContent}</textarea>
     <div class="d-flex gap-1">
-      <button class="btn btn-sm btn-primary" onclick="performEdit(${commentId})">
+      <button class="btn btn-sm btn-primary perform-edit-btn" data-id="${commentId}">
         <i class="fas fa-save"></i>
       </button>
-      <button class="btn btn-sm btn-secondary" onclick="loadComments()">
+      <button class="btn btn-sm btn-secondary cancel-edit-btn">
         <i class="fas fa-times"></i>
       </button>
     </div>
   `;
 }
-
 async function performEdit(commentId) {
   const textarea = document.getElementById(`edit-text-${commentId}`);
   const newContent = textarea.value.trim();
@@ -345,6 +334,3 @@ function showToast(msg, type) {
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
-window.startEditComment = startEditComment;
-window.performEdit = performEdit;
-window.deleteComment = deleteComment;

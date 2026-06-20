@@ -1,22 +1,19 @@
 "use strict";
 const { Op } = require("sequelize");
 const db = require("../models");
-
+const cloudinary = require("../middleware/cloudinary");
 const Report = db.Report;
-const User = db.users;
+const User = db.User; // ← fixed from db.users
 const Facility = db.Facility;
 const ReportFlag = db.ReportFlag;
-const UserReportVote = db.UserReportVote || require("../models/UserReportVote");
-const sequelize = db.sequelize; // ← biar nggak undefined
+const UserReportVote = db.UserReportVote;
+const sequelize = db.sequelize;
 
 const VALID_STATUSES = ["new", "in_progress", "resolved", "hidden"];
 const VALID_SORT = ["created_at", "updated_at", "vote_count"];
 const fs = require("fs");
 const path = require("path");
 
-// Inside deleteReport (admin)
-
-// Also apply the same file‑deletion logic inside deleteOwnReport (citizen)
 function formatReport(r) {
   return {
     id: r.id,
@@ -36,6 +33,7 @@ function formatReport(r) {
   };
 }
 
+// -------------------- searchReports --------------------
 const searchReports = async (req, res) => {
   try {
     const {
@@ -87,7 +85,6 @@ const searchReports = async (req, res) => {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 10));
     const offset = (pageNum - 1) * limitNum;
 
-    // 1) Fetch reports without flag aggregation
     const { count, rows } = await Report.findAndCountAll({
       where,
       include: [
@@ -99,7 +96,6 @@ const searchReports = async (req, res) => {
       offset,
     });
 
-    // 2) Collect report IDs and fetch flag counts in one query
     const reportIds = rows.map((r) => r.id);
     let flagCounts = {};
     if (reportIds.length > 0) {
@@ -117,8 +113,6 @@ const searchReports = async (req, res) => {
       });
     }
 
-    // 3) Format data
-    // 3) Format data and add flag_count
     const formatted = rows.map((r) => {
       const item = formatReport(r);
       item.flag_count = parseInt(flagCounts[r.id]) || 0;
@@ -138,6 +132,8 @@ const searchReports = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// -------------------- getReportById --------------------
 const getReportById = async (req, res) => {
   try {
     const report = await Report.findByPk(req.params.id, {
@@ -154,7 +150,6 @@ const getReportById = async (req, res) => {
     const isAdmin = req.user && req.user.role === "admin";
     const isOwner = req.user && req.user.id === report.user_id;
 
-    // Hidden reports are only accessible by admin or the owner
     if (report.status === "hidden" && !isAdmin && !isOwner) {
       return res
         .status(403)
@@ -187,15 +182,11 @@ const getReportById = async (req, res) => {
         reason: f.reason || "Tanpa alasan",
         created_at: f.created_at,
       }));
-      // Admin can never comment (already the case)
       data.can_comment = false;
     } else {
-      // For citizens and guests
-      // If the report is hidden, nobody can comment (including the owner)
       if (report.status === "hidden") {
         data.can_comment = false;
       } else {
-        // Only logged‑in citizens can comment on non‑hidden reports
         data.can_comment = req.user != null && req.user.role !== "admin";
       }
     }
@@ -207,7 +198,9 @@ const getReportById = async (req, res) => {
   }
 };
 
-// createReport, updateStatus, deleteReport, toggleVote tetap seperti sebelumnya (pakai fungsi yang sudah ada)
+// -------------------- createReport --------------------
+const uploadToCloudinary = require("../middleware/uploadToCloudinary");
+
 const createReport = async (req, res) => {
   try {
     if (!req.user)
@@ -220,10 +213,14 @@ const createReport = async (req, res) => {
         .json({ success: false, message: "Judul dan deskripsi wajib diisi" });
     }
 
-    // Path gambar (jika ada)
-    const image_path = req.file
-      ? "/uploads/reports/" + req.file.filename
-      : null;
+    let image_path = null;
+    let image_public_id = null;
+
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer, "reports");
+      image_path = result.secure_url; // ← Cloudinary URL
+      image_public_id = result.public_id; // ← for deletion later
+    }
 
     const report = await Report.create({
       user_id: req.user.id,
@@ -232,6 +229,7 @@ const createReport = async (req, res) => {
       description,
       location_text: location_text || null,
       image_path,
+      image_public_id, // ← store this for deletion
       status: "new",
       is_read: false,
     });
@@ -266,6 +264,7 @@ const updateStatus = async (req, res) => {
 };
 
 // -------------------- deleteReport (admin only) --------------------
+// ── deleteReport (admin) ──
 const deleteReport = async (req, res) => {
   try {
     const report = await Report.findByPk(req.params.id);
@@ -273,16 +272,15 @@ const deleteReport = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "Laporan tidak ditemukan" });
-    if (report.image_path) {
-      const uploadsDir = path.resolve(__dirname, "..", "uploads", "reports");
-      const filePath = path.resolve(__dirname, "..", report.image_path);
 
-      if (filePath.startsWith(uploadsDir)) {
-        fs.unlink(filePath, (err) => {
-          if (err) console.error("Failed to delete file:", err);
-        });
+    if (report.image_public_id) {
+      try {
+        await cloudinary.uploader.destroy(report.image_public_id);
+      } catch (err) {
+        console.error("Failed to delete image from Cloudinary:", err);
       }
     }
+
     await report.destroy();
     res.json({ success: true, message: "Laporan dihapus" });
   } catch (err) {
@@ -291,85 +289,7 @@ const deleteReport = async (req, res) => {
   }
 };
 
-// -------------------- toggleVote (citizen) --------------------
-const toggleVote = async (req, res) => {
-  try {
-    const reportId = req.params.id;
-    const userId = req.user.id;
-
-    const [vote, created] = await UserReportVote.findOrCreate({
-      where: { user_id: userId, report_id: reportId },
-    });
-    if (!created) await vote.destroy();
-    else {
-      await UserReportVote.create({ user_id: userId, report_id: reportId });
-      res.json({
-        success: true,
-        voted: true,
-        vote_count: await getVoteCount(reportId),
-      });
-    }
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-async function getVoteCount(reportId) {
-  const report = await Report.findByPk(reportId, {
-    attributes: ["vote_count"],
-  });
-  return report?.vote_count || 0;
-}
-// -------------------- updateOwnReport (citizen) --------------------
-const updateOwnReport = async (req, res) => {
-  try {
-    const count = await UserReportVote.count({
-      where: { report_id: reportId },
-    });
-    return count;
-    if (!report)
-      return res
-        .status(404)
-        .json({ success: false, message: "Laporan tidak ditemukan" });
-
-    // Only the owner can edit
-    if (report.user_id !== req.user.id) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Tidak punya izin" });
-    }
-
-    // only allow editing if status is 'new' or 'in_progress'
-    if (!["new", "in_progress"].includes(report.status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Laporan sudah diproses, tidak dapat diedit",
-      });
-    }
-
-    const { title, description, location_text, facility_id } = req.body;
-    const updateData = {};
-    if (title !== undefined) updateData.title = title;
-    if (description !== undefined) updateData.description = description;
-    if (location_text !== undefined) updateData.location_text = location_text;
-    if (facility_id !== undefined) updateData.facility_id = facility_id || null;
-
-    // If new image uploaded
-    if (req.file) {
-      updateData.image_path = "/uploads/reports/" + req.file.filename;
-    }
-
-    await report.update(updateData);
-    res.json({ success: true, data: report });
-  } catch (err) {
-    console.error("updateOwnReport error:", err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-// -------------------- deleteOwnReport (citizen) --------------------
-
-// deleteOwnReport – also delete the file
+// ── deleteOwnReport (citizen) ──
 const deleteOwnReport = async (req, res) => {
   try {
     const report = await Report.findByPk(req.params.id);
@@ -384,15 +304,11 @@ const deleteOwnReport = async (req, res) => {
         .json({ success: false, message: "Tidak punya izin" });
     }
 
-    if (report.image_path) {
-      const uploadsDir = path.resolve(__dirname, "..", "uploads", "reports");
-      const filePath = path.resolve(__dirname, "..", report.image_path);
-
-      // Only delete if file is inside the uploads directory
-      if (filePath.startsWith(uploadsDir)) {
-        fs.unlink(filePath, (err) => {
-          if (err) console.error("Failed to delete file:", err);
-        });
+    if (report.image_public_id) {
+      try {
+        await cloudinary.uploader.destroy(report.image_public_id);
+      } catch (err) {
+        console.error("Failed to delete image from Cloudinary:", err);
       }
     }
 
@@ -403,6 +319,103 @@ const deleteOwnReport = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// -------------------- toggleVote (citizen) --------------------
+const toggleVote = async (req, res) => {
+  try {
+    const reportId = req.params.id;
+    const userId = req.user.id;
+
+    const report = await Report.findByPk(reportId);
+    if (!report)
+      return res
+        .status(404)
+        .json({ success: false, message: "Laporan tidak ditemukan" });
+
+    const [vote, created] = await UserReportVote.findOrCreate({
+      where: { user_id: userId, report_id: reportId },
+    });
+
+    if (!created) {
+      // Already voted — remove vote
+      await vote.destroy();
+      await Report.decrement("vote_count", { where: { id: reportId } });
+      const updated = await Report.findByPk(reportId, {
+        attributes: ["vote_count"],
+      });
+      return res.json({
+        success: true,
+        voted: false,
+        vote_count: updated.vote_count,
+      });
+    } else {
+      // New vote
+      await Report.increment("vote_count", { where: { id: reportId } });
+      const updated = await Report.findByPk(reportId, {
+        attributes: ["vote_count"],
+      });
+      return res.json({
+        success: true,
+        voted: true,
+        vote_count: updated.vote_count,
+      });
+    }
+  } catch (err) {
+    console.error("toggleVote error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// -------------------- updateOwnReport (citizen) --------------------
+const updateOwnReport = async (req, res) => {
+  try {
+    const report = await Report.findByPk(req.params.id);
+    if (!report)
+      return res
+        .status(404)
+        .json({ success: false, message: "Laporan tidak ditemukan" });
+
+    if (report.user_id !== req.user.id) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Tidak punya izin" });
+    }
+
+    if (!["new", "in_progress"].includes(report.status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Laporan sudah diproses, tidak dapat diedit",
+      });
+    }
+
+    const { title, description, location_text, facility_id } = req.body;
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (location_text !== undefined) updateData.location_text = location_text;
+    if (facility_id !== undefined) updateData.facility_id = facility_id || null;
+
+    if (req.file) {
+      // Delete old image from Cloudinary
+      if (report.image_public_id) {
+        try {
+          await cloudinary.uploader.destroy(report.image_public_id);
+        } catch (err) {
+          console.error("Failed to delete old image:", err);
+        }
+      }
+      const result = await uploadToCloudinary(req.file.buffer, "reports");
+      updateData.image_path = result.secure_url;
+      updateData.image_public_id = result.public_id;
+    }
+    await report.update(updateData);
+    res.json({ success: true, data: report });
+  } catch (err) {
+    console.error("updateOwnReport error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 module.exports = {
   searchReports,
   getReportById,

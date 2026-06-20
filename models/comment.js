@@ -19,9 +19,8 @@ const Comment = sequelize.define('Comment', {
 // Associations
 Comment.associate = (models) => {
   Comment.belongsTo(models.Report, { foreignKey: 'report_id' });
-  Comment.belongsTo(models.users, { foreignKey: 'user_id', as: 'Author' });
+  Comment.belongsTo(models.User, { foreignKey: 'user_id', as: 'Author' }); // ← User not users
   Comment.belongsTo(models.Comment, { foreignKey: 'parent_id', as: 'Parent' });
   Comment.hasMany(models.Comment, { foreignKey: 'parent_id', as: 'Replies' });
 };
-
 module.exports = Comment;

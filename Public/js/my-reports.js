@@ -1,5 +1,4 @@
 // public/js/my-reports.js
-
 CitizenGuard.protect();
 
 const statusBadge = {
@@ -13,7 +12,10 @@ let currentEditId = null;
 let myReportsData = [];
 let currentUser = null;
 
-// ---------- Load My Reports ----------
+function esc(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 async function loadMyReports() {
   const container = document.getElementById('myReportsContainer');
   try {
@@ -47,14 +49,18 @@ async function loadMyReports() {
             </div>
             ${r.image_path ? `
             <div class="mb-2">
-              <img src="${r.image_path}" class="img-fluid rounded" style="max-height:100px; cursor:pointer;"
-                   onclick="viewFullImage('${r.image_path}', ${r.id})" alt="Gambar laporan">
+              <img src="${r.image_path}"
+                class="img-fluid rounded report-image"
+                style="max-height:100px; cursor:pointer;"
+                data-path="${r.image_path}"
+                data-id="${r.id}"
+                alt="Gambar laporan">
             </div>` : ''}
             <div class="d-flex gap-2 mt-2">
-              <button class="btn btn-sm btn-outline-primary" onclick="openEditModal(${r.id})">
+              <button class="btn btn-sm btn-outline-primary edit-report-btn" data-id="${r.id}">
                 <i class="fas fa-pen"></i> Edit
               </button>
-              <button class="btn btn-sm btn-outline-danger" onclick="deleteMyReport(${r.id})">
+              <button class="btn btn-sm btn-outline-danger delete-report-btn" data-id="${r.id}">
                 <i class="fas fa-trash"></i> Hapus
               </button>
             </div>
@@ -65,14 +71,23 @@ async function loadMyReports() {
         </div>
       </div>
     `).join('');
+
+    // ── Event delegation after rendering ──
+    container.addEventListener('click', (e) => {
+      const img = e.target.closest('.report-image');
+      const editBtn = e.target.closest('.edit-report-btn');
+      const deleteBtn = e.target.closest('.delete-report-btn');
+
+      if (img) viewFullImage(img.dataset.path, parseInt(img.dataset.id));
+      if (editBtn) openEditModal(parseInt(editBtn.dataset.id));
+      if (deleteBtn) deleteMyReport(parseInt(deleteBtn.dataset.id));
+    });
+
   } catch (err) {
     container.innerHTML = '<p class="text-danger text-center">Gagal memuat laporan.</p>';
   }
 }
 
-function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-// ---------- Full Image Overlay ----------
 async function viewFullImage(imagePath, reportId) {
   try {
     if (!currentUser) {
@@ -88,7 +103,6 @@ async function viewFullImage(imagePath, reportId) {
 
     const isOwner = report.user_id === currentUser.id;
     const isAdmin = currentUser.role === 'admin';
-
     if (!isOwner && !isAdmin) {
       alert('Anda tidak memiliki akses untuk melihat gambar ini.');
       return;
@@ -105,43 +119,33 @@ async function viewFullImage(imagePath, reportId) {
   }
 }
 
-// ---------- Open Edit Modal (prefill all fields) ----------
 async function openEditModal(id) {
   currentEditId = id;
   const report = myReportsData.find(r => r.id === id);
   if (!report) return;
 
-  // Prefill text fields
   document.getElementById('editTitle').value = report.title || '';
   document.getElementById('editDescription').value = report.description || '';
   document.getElementById('editLocation').value = report.location_text || '';
 
-  // Load facilities into dropdown (using the proven pattern)
   const sel = document.getElementById('editFacility');
-  // Remove all existing options except the first placeholder
   sel.querySelectorAll('option:not(:first-child)').forEach(o => o.remove());
 
   try {
     const res = await fetch('/api/facilities');
     const data = await res.json();
-    // Handle both array and { data: [] }
     const facilities = Array.isArray(data) ? data : (data.data || data.facilities || []);
-
     facilities.forEach(f => {
       const opt = document.createElement('option');
       opt.value = f.id;
       opt.textContent = f.name;
       sel.appendChild(opt);
     });
-
-    // Now set the facility value from the report
-    const facilityVal = report.facility_id ? report.facility_id.toString() : '';
-    document.getElementById('editFacility').value = facilityVal;
+    sel.value = report.facility_id ? report.facility_id.toString() : '';
   } catch (err) {
-    console.error('Gagal memuat fasilitas untuk edit modal:', err);
+    console.error('Gagal memuat fasilitas:', err);
   }
 
-  // Show current image preview (if any)
   const previewContainer = document.getElementById('editImagePreview');
   const previewImg = document.getElementById('editCurrentImage');
   if (report.image_path) {
@@ -151,55 +155,22 @@ async function openEditModal(id) {
     previewContainer.style.display = 'none';
   }
 
-  // Reset file input
   document.getElementById('editImage').value = '';
-
-  // Show Bootstrap modal
   const modal = new bootstrap.Modal(document.getElementById('editReportModal'));
   modal.show();
 }
 
-// ---------- Save Edit ----------
-document.getElementById('saveEditBtn').addEventListener('click', async () => {
-  const formData = new FormData(document.getElementById('editReportForm'));
-
-  try {
-    const res = await fetch(`/api/reports/${currentEditId}`, {
-      method: 'PUT',
-      body: formData
-    });
-    const data = await res.json();
-    if (data.success) {
-      bootstrap.Modal.getInstance(document.getElementById('editReportModal')).hide();
-      loadMyReports(); // refresh list
-    } else {
-      alert(data.message || 'Gagal menyimpan perubahan');
-    }
-  } catch (err) {
-    alert('Gagal terhubung ke server');
-  }
-});
-
-// ---------- Delete Report ----------
 async function deleteMyReport(id) {
   if (!confirm('Hapus laporan ini?')) return;
   try {
     const res = await fetch(`/api/reports/${id}`, { method: 'DELETE' });
     const data = await res.json();
-    if (data.success) {
-      loadMyReports(); // refresh list
-    } else {
-      alert(data.message || 'Gagal menghapus');
-    }
+    if (data.success) loadMyReports();
+    else alert(data.message || 'Gagal menghapus');
   } catch (err) {
     alert('Gagal terhubung ke server');
   }
 }
-
-// Expose to inline onclick
-window.openEditModal = openEditModal;
-window.deleteMyReport = deleteMyReport;
-window.viewFullImage = viewFullImage;
 
 document.addEventListener('DOMContentLoaded', async () => {
   try {
@@ -209,5 +180,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (meData.loggedIn) currentUser = meData;
     }
   } catch (_) {}
-  loadMyReports();
+
+  await loadMyReports();
+
+  document.getElementById('saveEditBtn')?.addEventListener('click', async () => {
+    const formData = new FormData(document.getElementById('editReportForm'));
+    try {
+      const res = await fetch(`/api/reports/${currentEditId}`, {
+        method: 'PUT',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('editReportModal')).hide();
+        loadMyReports();
+      } else {
+        alert(data.message || 'Gagal menyimpan perubahan');
+      }
+    } catch (err) {
+      alert('Gagal terhubung ke server');
+    }
+  });
 });

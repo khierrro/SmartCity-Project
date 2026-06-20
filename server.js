@@ -2,6 +2,8 @@ const express = require("express");
 const path = require("path");
 const sequelize = require("./config/database");
 require("dotenv").config();
+const morgan = require('morgan');
+
 const {
   authLimiter,
   readLimiter,
@@ -15,20 +17,25 @@ const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 
 app.use(cookieParser());
-
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // ─────────────────────────────────────────
 // JWT Middleware – decode token from cookie
 // ─────────────────────────────────────────
+// JWT decode
 app.use((req, res, next) => {
   const token = req.cookies.token;
   if (token) {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      // 🔒 Safety: never expose password or timestamps
-      delete decoded.password;
-      delete decoded.created_at;
-      delete decoded.updated_at;
-      req.user = decoded;
+      req.user = {
+        id: decoded.id,
+        name: decoded.name,
+        email: decoded.email,
+        role: decoded.role,
+        phone: decoded.phone,
+        address: decoded.address,
+        provider: decoded.provider,
+      };
     } catch (err) {
       res.clearCookie("token");
       req.user = null;
@@ -38,6 +45,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+const verifyUserExists = require("./middleware/verifyUserExists");
+app.use(verifyUserExists);
 
 // ─────────────────────────────────────────
 // 1. HELMET & CONTENT SECURITY POLICY
@@ -54,14 +64,14 @@ app.use(
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: [
-  "'self'",
-  (req, res) => `'nonce-${res.locals.cspNonce}'`,
-  "https://cdn.tailwindcss.com",
-  "https://cdnjs.cloudflare.com",
-  "https://cdn.jsdelivr.net",
-  "https://www.google.com",
-  "https://www.gstatic.com",
-],
+        "'self'",
+        (req, res) => `'nonce-${res.locals.cspNonce}'`,
+        "https://cdn.tailwindcss.com",
+        "https://cdnjs.cloudflare.com",
+        "https://cdn.jsdelivr.net",
+        "https://www.google.com",
+        "https://www.gstatic.com",
+      ],
       frameSrc: ["'self'", "https://www.google.com"],
       styleSrc: [
         "'self'",
@@ -78,7 +88,7 @@ app.use(
         "https://www.gstatic.com",
       ],
     },
-  })
+  }),
 );
 
 // ─────────────────────────────────────────
@@ -106,25 +116,26 @@ passport.use(
       try {
         const email = profile.emails[0].value;
         const name = profile.displayName;
-
         let user = await User.findOne({ where: { email } });
         if (!user) {
-         const randomPassword = require("crypto").randomBytes(16).toString("hex");
+          const randomPassword = require("crypto")
+            .randomBytes(16)
+            .toString("hex");
           const hashed = await bcrypt.hash(randomPassword, 10);
           user = await User.create({
             name,
             email,
             password: hashed,
             role: "citizen",
+            provider: "google", // ← set provider
           });
         }
-        // Pass the full user instance (we'll extract needed fields later)
         done(null, user);
       } catch (err) {
         done(err);
       }
-    }
-  )
+    },
+  ),
 );
 // Only need initialize() for the strategy itself
 app.use(passport.initialize());
@@ -134,14 +145,62 @@ app.use(passport.initialize());
 // ─────────────────────────────────────────
 app.get(
   "/auth/google",
-  passport.authenticate("google", { session: false, scope: ["profile", "email"] })
+  passport.authenticate("google", {
+    session: false,
+    scope: ["profile", "email"],
+  }),
 );
 
 app.get(
   "/auth/google/callback",
-  passport.authenticate("google", { session:false,failureRedirect: "/login.html" }),
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: "/login.html",
+  }),
   (req, res) => {
-    // Extract only safe fields from req.user (the full model)
+    const reauthAction = req.cookies?.reauth_action;
+
+    // ── RE-AUTH FLOW ──────────────────────────────
+    if (reauthAction) {
+      res.clearCookie("reauth_action");
+
+      let reauthData;
+      try {
+        reauthData = JSON.parse(reauthAction);
+      } catch {
+        return res.redirect("/pages/profile.html?reauth=failed");
+      }
+
+      // Verify the Google account matches the original user
+      if (
+        req.user.email !== reauthData.email ||
+        req.user.id !== reauthData.userId
+      ) {
+        return res.redirect("/pages/profile.html?reauth=failed");
+      }
+
+      // Issue short-lived re-auth token
+      const reauthToken = jwt.sign(
+        {
+          id: req.user.id,
+          action: reauthData.action,
+          verified_at: Date.now(),
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "5m" },
+      );
+
+      res.cookie("reauth_token", reauthToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 5 * 60 * 1000,
+      });
+
+      return res.redirect("/pages/profile.html?reauth=success");
+    }
+
+    // ── NORMAL LOGIN FLOW (unchanged) ─────────────
     const safeUser = {
       id: req.user.id,
       name: req.user.name,
@@ -149,26 +208,54 @@ app.get(
       role: req.user.role,
       phone: req.user.phone,
       address: req.user.address,
+      provider: req.user.provider,
     };
 
-    // Create JWT and set as cookie
-    const token = jwt.sign(safeUser, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const token = jwt.sign(safeUser, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false,      // true in production
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 24 * 60 * 60 * 1000,
     });
 
-    // Redirect to appropriate dashboard
     if (safeUser.role === "admin") {
       res.redirect("/pages/admin.html");
     } else {
       res.redirect("/pages/menu.html");
     }
-  }
+  },
 );
+// Trigger re-auth for account deletion
+app.get("/auth/google/reauth", (req, res, next) => {
+  if (!req.user) return res.redirect("/login.html");
 
+  // Encode user info into the cookie so we can verify it in the callback
+  res.cookie(
+    "reauth_action",
+    JSON.stringify({
+      action: "delete_account",
+      userId: req.user.id,
+      email: req.user.email,
+    }),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 10 * 60 * 1000,
+    },
+  );
+
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    session: false,
+    prompt: "consent",
+    login_hint: req.user.email,
+  })(req, res, next);
+});
 // ─────────────────────────────────────────
 // 5. CSRF PROTECTION (cookie-based, unchanged)
 // ─────────────────────────────────────────
@@ -184,8 +271,10 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     sameSite: "lax",
   },
   getTokenFromRequest: (req) => {
-    return req.body?._csrf        // form submissions
-      || req.headers['x-csrf-token']; // AJAX requests
+    return (
+      req.body?._csrf || // form submissions
+      req.headers["x-csrf-token"]
+    ); // AJAX requests
   },
 });
 app.post("/logout", (req, res) => {
@@ -200,7 +289,6 @@ app.use((req, res, next) => {
   req.csrfToken = () => generateCsrfToken(req, res);
   next();
 });
-
 
 // ─────────────────────────────────────────
 // 6. RATE LIMITER + ROUTES
@@ -240,7 +328,7 @@ app.use((req, res, next) => {
   fs.readFile(filePath, "utf8", (err, html) => {
     if (err) return next();
 
-    const user = req.user || null;               // from JWT
+    const user = req.user || null; // from JWT
     const isAdmin = user && user.role === "admin";
     const isLoggedIn = !!user;
     const csrfToken = req.csrfToken();
@@ -260,7 +348,7 @@ app.use((req, res, next) => {
                 </div>
                 <div style="display:flex;align-items:center;gap:0.75rem">
                   <div style="position:relative;">
-                    <button id="notificationBell" style="background:none;border:none;cursor:pointer;font-size:1.25rem;color:#555" onclick="event.stopPropagation()">
+<button id="notificationBell" style="background:none;border:none;cursor:pointer;font-size:1.25rem;color:#555">
                       <i class="fa-regular fa-bell"></i>
                     </button>
                     <span id="notificationCount" style="position:absolute;top:-0.25rem;right:-0.25rem;background:#ef4444;color:white;border-radius:50%;height:1.25rem;width:1.25rem;display:flex;align-items:center;justify-content:center;font-size:0.75rem;display:none">0</span>
@@ -349,11 +437,11 @@ app.use((req, res, next) => {
 
     result = result.replace(
       "</head>",
-      `<meta name="csrf-token" content="${csrfToken}">\n</head>`
+      `<meta name="csrf-token" content="${csrfToken}">\n</head>`,
     );
     result = result.replace(
       "</body>",
-      `<script src="/js/api.js"></script>\n</body>`
+      `<script src="/js/api.js"></script>\n</body>`,
     );
     res.send(result);
   });
@@ -371,16 +459,16 @@ app.use((req, res, next) => {
     const csrfToken = req.csrfToken();
     let result = html.replace(
       /__RECAPTCHA_SITE_KEY__/g,
-      process.env.RECAPTCHA_SITE_KEY || ""
+      process.env.RECAPTCHA_SITE_KEY || "",
     );
     result = result.replace(/__CSRF_TOKEN__/g, csrfToken);
     result = result.replace(
       "</head>",
-      `<meta name="csrf-token" content="${csrfToken}">\n</head>`
+      `<meta name="csrf-token" content="${csrfToken}">\n</head>`,
     );
     result = result.replace(
       "</body>",
-      `<script src="/js/api.js"></script>\n</body>`
+      `<script src="/js/api.js"></script>\n</body>`,
     );
     res.send(result);
   });
@@ -452,7 +540,7 @@ sequelize
   .then(() => {
     console.log("Database terkoneksi (Sequelize)");
     app.listen(PORT, () =>
-      console.log(`Server berjalan di http://localhost:${PORT}`)
+      console.log(`Server berjalan di http://localhost:${PORT}`),
     );
   })
   .catch((err) => console.error("Gagal koneksi database:", err));

@@ -1,7 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-
-const User = sequelize.define('users', {
+const User = sequelize.define('User', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -15,13 +14,11 @@ const User = sequelize.define('users', {
     type: DataTypes.STRING(100),
     allowNull: false,
     unique: true,
-    validate: {
-      isEmail: true,
-    },
+    validate: { isEmail: true },
   },
   password: {
     type: DataTypes.STRING(255),
-    allowNull: false,
+    allowNull: true,
   },
   phone: {
     type: DataTypes.STRING(20),
@@ -36,13 +33,17 @@ const User = sequelize.define('users', {
     allowNull: false,
     defaultValue: 'citizen',
   },
+  provider: {
+    type: DataTypes.ENUM('local', 'google'),  // ← new
+    allowNull: false,
+    defaultValue: 'local',
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
   },
 }, {
   tableName: 'users',
-  timestamps: false, // tidak pakai createdAt/updatedAt otomatis
+  timestamps: false,
 });
-
 module.exports = User;

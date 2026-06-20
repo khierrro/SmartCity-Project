@@ -13,7 +13,7 @@ const UserReportVote = sequelize.define('UserReportVote', {
 });
 
 UserReportVote.associate = (models) => {
-  UserReportVote.belongsTo(models.users, { foreignKey: 'user_id' });
+  UserReportVote.belongsTo(models.User, { foreignKey: 'user_id' });
   UserReportVote.belongsTo(models.Report, { foreignKey: 'report_id' });
 };
 

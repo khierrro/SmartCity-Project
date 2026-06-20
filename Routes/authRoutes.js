@@ -43,6 +43,7 @@ router.post(
         phone: phone || null,
         address: address || null,
         role: "citizen",
+        provider: "local",
       });
 
       res.status(201).json({ message: "Registrasi berhasil, silakan login" });
@@ -50,7 +51,7 @@ router.post(
       console.error(err);
       res.status(500).json({ message: "Terjadi kesalahan server" });
     }
-  }
+  },
 );
 
 // POST /login
@@ -104,14 +105,15 @@ router.post(
           role: user.role,
           phone: user.phone,
           address: user.address,
+          provider: user.provider
         },
         process.env.JWT_SECRET,
-        { expiresIn: "1d" }
+        { expiresIn: "1d" },
       );
 
       res.cookie("token", token, {
         httpOnly: true,
-        secure: false, // true in production (HTTPS)
+        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         maxAge: 24 * 60 * 60 * 1000,
       });
@@ -131,7 +133,7 @@ router.post(
       console.error(err);
       res.status(500).json({ message: "Terjadi kesalahan server" });
     }
-  }
+  },
 );
 
 // GET /me
@@ -147,12 +149,14 @@ router.get("/me", (req, res) => {
     role: req.user.role,
     phone: req.user.phone || null,
     address: req.user.address || null,
+    provider: req.user.provider || "local", // ← add this
   });
 });
 
 // PUT /profile
 router.put(
   "/profile",
+  authLimiter,
   profileRules,
   handleValidationErrors,
   async (req, res) => {
@@ -174,6 +178,11 @@ router.put(
       if (address !== undefined) updateData.address = address;
 
       if (newPassword) {
+        if (req.user.provider === "google") {
+          return res.status(400).json({
+            message: "Akun Google tidak dapat mengubah password di sini",
+          });
+        }
         if (!currentPassword) {
           return res.status(400).json({
             message: "Password saat ini harus diisi untuk mengubah password",
@@ -198,14 +207,15 @@ router.put(
             role: user.role,
             phone: phone !== undefined ? phone : user.phone,
             address: address !== undefined ? address : user.address,
+            provider: user.provider
           },
           process.env.JWT_SECRET,
-          { expiresIn: "1d" }
+          { expiresIn: "1d" },
         );
 
         res.cookie("token", newToken, {
           httpOnly: true,
-          secure: false,
+          secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
           maxAge: 24 * 60 * 60 * 1000,
         });
@@ -216,7 +226,7 @@ router.put(
       console.error(err);
       res.status(500).json({ message: "Terjadi kesalahan server" });
     }
-  }
+  },
 );
 
 // DELETE /account
@@ -225,19 +235,50 @@ router.delete("/account", async (req, res) => {
     return res.status(401).json({ message: "Silakan login terlebih dahulu" });
   }
 
-  const userId = req.user.id;
-  const { password } = req.body;
-
-  if (!password) {
-    return res.status(400).json({
-      message: "Password diperlukan untuk menghapus akun",
-    });
-  }
-
   try {
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return res.status(404).json({ message: "Akun tidak ditemukan" });
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ message: "Akun tidak ditemukan" });
+
+    // ── GOOGLE USER: verify re-auth token ──
+    if (req.user.provider === "google") {
+      const reauthToken = req.cookies?.reauth_token;
+      if (!reauthToken) {
+        return res.status(403).json({
+          message: "Verifikasi Google diperlukan sebelum menghapus akun",
+          requiresReauth: true, // ← frontend uses this to trigger re-auth
+        });
+      }
+
+      try {
+        const decoded = jwt.verify(reauthToken, process.env.JWT_SECRET);
+
+        // Make sure re-auth was for THIS user and THIS action
+        if (decoded.id !== req.user.id || decoded.action !== "delete_account") {
+          return res
+            .status(403)
+            .json({ message: "Token verifikasi tidak valid" });
+        }
+      } catch (err) {
+        res.clearCookie("reauth_token");
+        return res.status(403).json({
+          message: "Verifikasi Google kadaluarsa, silakan ulangi",
+          requiresReauth: true,
+        });
+      }
+
+      // Clear re-auth token after use — one time only
+      res.clearCookie("reauth_token");
+      await user.destroy();
+      res.clearCookie("token");
+      return res.json({ message: "Akun berhasil dihapus" });
+    }
+
+    // ── LOCAL USER: verify password ──
+    const { password } = req.body;
+    if (!password) {
+      return res
+        .status(400)
+        .json({ message: "Password diperlukan untuk menghapus akun" });
     }
 
     const match = await bcrypt.compare(password, user.password);

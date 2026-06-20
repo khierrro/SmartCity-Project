@@ -11,6 +11,7 @@ const Report = sequelize.define('Report', {
     allowNull: false
   },
   image_path: DataTypes.STRING(255),
+  image_public_id: DataTypes.STRING(255),
   location_text: DataTypes.STRING(255),
   latitude: DataTypes.DECIMAL(10, 8),
   longitude: DataTypes.DECIMAL(11, 8),
@@ -40,7 +41,7 @@ is_read: {
   updatedAt: 'updated_at'
 });
 Report.associate = (models) => {
-  Report.belongsTo(models.users, { foreignKey: 'user_id', as: 'User' });
+  Report.belongsTo(models.User, { foreignKey: 'user_id', as: 'User' });
   Report.belongsTo(models.Facility, { foreignKey: 'facility_id' });
   Report.hasMany(models.ReportFlag, { foreignKey: 'report_id' });   // ← add this
 };

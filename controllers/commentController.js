@@ -2,7 +2,7 @@
 const db      = require('../models');
 const Comment = db.Comment;
 const Report  = db.Report;
-const User    = db.users;
+const User    = db.User;
 
 const EDIT_LIMIT_MINUTES = 30;
 

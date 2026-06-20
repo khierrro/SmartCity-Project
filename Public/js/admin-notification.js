@@ -1,6 +1,25 @@
 // public/js/admin-notifications.js
 // Shared notification logic for all admin pages
+document.addEventListener('DOMContentLoaded', () => {
+  const bell = document.getElementById('notificationBell');
+  const dropdown = document.getElementById('notificationDropdown');
 
+  if (bell) {
+    bell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (dropdown) {
+        dropdown.style.display =
+          dropdown.style.display === 'none' ? 'block' : 'none';
+      }
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (dropdown && !bell?.contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+});
 async function loadNotifications() {
   const countSpan = document.getElementById('notificationCount');
   const listDiv   = document.getElementById('notificationList');
