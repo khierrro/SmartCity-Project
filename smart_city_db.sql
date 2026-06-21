@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Waktu pembuatan: 28 Apr 2026 pada 19.48
+-- Waktu pembuatan: 20 Jun 2026 pada 16.57
 -- Versi server: 10.4.32-MariaDB
 -- Versi PHP: 8.2.12
 
@@ -44,11 +44,12 @@ CREATE TABLE `comments` (
 --
 
 INSERT INTO `comments` (`id`, `report_id`, `user_id`, `parent_id`, `content`, `likes`, `is_edited`, `created_at`, `updated_at`) VALUES
-(1, 99, 16, NULL, 'hey tayo', 0, 0, '2026-04-28 12:56:41', '2026-04-28 12:56:41'),
-(2, 99, 16, 1, 'kontol kau', 0, 0, '2026-04-28 12:56:55', '2026-04-28 12:56:55'),
-(4, 109, 16, NULL, 'halo', 0, 0, '2026-04-28 15:47:19', '2026-04-28 15:47:19'),
-(5, 109, 16, NULL, 'gak ada orang', 0, 0, '2026-04-28 15:47:31', '2026-04-28 15:47:31'),
-(7, 110, 16, NULL, 'dww', 0, 0, '2026-04-28 16:05:23', '2026-04-28 16:05:23');
+(1, 99, NULL, NULL, 'hey tayo', 0, 0, '2026-04-28 12:56:41', '2026-04-28 12:56:41'),
+(2, 99, NULL, 1, 'kontol kau', 0, 0, '2026-04-28 12:56:55', '2026-04-28 12:56:55'),
+(4, 109, NULL, NULL, 'halo', 0, 0, '2026-04-28 15:47:19', '2026-04-28 15:47:19'),
+(5, 109, NULL, NULL, 'gak ada orang', 0, 0, '2026-04-28 15:47:31', '2026-04-28 15:47:31'),
+(7, 110, NULL, NULL, 'dww', 0, 0, '2026-04-28 16:05:23', '2026-04-28 16:05:23'),
+(9, 109, NULL, NULL, 'hey', 0, 0, '2026-06-17 09:29:49', '2026-06-17 09:29:49');
 
 -- --------------------------------------------------------
 
@@ -67,20 +68,21 @@ CREATE TABLE `facilities` (
   `latitude` decimal(10,8) DEFAULT NULL,
   `longitude` decimal(11,8) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
-  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `image_public_id` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `facilities`
 --
 
-INSERT INTO `facilities` (`id`, `name`, `type`, `address`, `phone`, `operating_hours`, `image_path`, `latitude`, `longitude`, `created_at`, `updated_at`) VALUES
-(1, 'RSUD Kota Sejahtera', 'hospital', 'Jl. Kesehatan No. 1, Kota Sejahtera', '(021) 555-1234', '24 Jam', '/facility/RSUD.webp', NULL, NULL, '2026-04-24 20:14:32', '2026-04-26 02:13:26'),
-(2, 'Polresta Kota Sejahtera', 'police', 'Jl. Keamanan No. 10, Kota Sejahtera', '(021) 555-9110', '24 Jam', '/facility/Polresta.jpeg', NULL, NULL, '2026-04-24 20:14:32', '2026-04-26 02:13:26'),
-(3, 'Pos Pemadam Kebakaran Pusat', 'fire_station', 'Jl. Penyelamatan No. 5, Kota Sejahtera', '(021) 555-1133', '24 Jam', '/facility/PosPemadam.webp', NULL, NULL, '2026-04-24 20:14:32', '2026-04-26 02:13:27'),
-(4, 'RS Bhakti Husada', 'hospital', 'Jl. Raya Barat No. 25, Kota Sejahtera', '(021) 555-5678', '24 Jam', '/facility/RS.jpeg', NULL, NULL, '2026-04-24 20:14:32', '2026-04-26 02:13:26'),
-(5, 'Klinik Pratama Sehat', 'clinic', 'Jl. Melati No. 8, Kota Sejahtera', '(021) 555-3344', '08:00 - 20:00', '/facility/klinik.jpg', NULL, NULL, '2026-04-24 20:14:32', '2026-04-26 02:13:26'),
-(6, 'Polsek Timur', 'police', 'Jl. Anggrek No. 17, Kota Sejahtera', '(021) 555-9111', '24 Jam', '/facility/Polsek.jpeg', NULL, NULL, '2026-04-24 20:14:32', '2026-04-26 02:13:26');
+INSERT INTO `facilities` (`id`, `name`, `type`, `address`, `phone`, `operating_hours`, `image_path`, `latitude`, `longitude`, `created_at`, `updated_at`, `image_public_id`) VALUES
+(1, 'RSUD Kota Sejahtera', 'hospital', 'Jl. Kesehatan No. 1, Kota Sejahtera', '(021) 555-1234', '24 Jam', 'https://res.cloudinary.com/dfcknh4j1/image/upload/v1781963693/facilities/vvkzky0o8l4bcp3pkynl.webp', NULL, NULL, '2026-04-24 20:14:32', '2026-06-20 13:54:54', 'facilities/vvkzky0o8l4bcp3pkynl'),
+(2, 'Polresta Kota Sejahtera', 'police', 'Jl. Keamanan No. 10, Kota Sejahtera', '(021) 555-9110', '24 Jam', 'https://res.cloudinary.com/dfcknh4j1/image/upload/v1781963694/facilities/avpor868icsix5izcjqt.jpg', NULL, NULL, '2026-04-24 20:14:32', '2026-06-20 13:54:55', 'facilities/avpor868icsix5izcjqt'),
+(3, 'Pos Pemadam Kebakaran Pusat', 'fire_station', 'Jl. Penyelamatan No. 5, Kota Sejahtera', '(021) 555-1133', '24 Jam', 'https://res.cloudinary.com/dfcknh4j1/image/upload/v1781963695/facilities/f8wj0cjbjpmhkagik2vk.webp', NULL, NULL, '2026-04-24 20:14:32', '2026-06-20 13:54:56', 'facilities/f8wj0cjbjpmhkagik2vk'),
+(4, 'RS Bhakti Husada', 'hospital', 'Jl. Raya Barat No. 25, Kota Sejahtera', '(021) 555-5678', '24 Jam', 'https://res.cloudinary.com/dfcknh4j1/image/upload/v1781963696/facilities/zyy855caofk5e5xqg3wu.jpg', NULL, NULL, '2026-04-24 20:14:32', '2026-06-20 13:54:57', 'facilities/zyy855caofk5e5xqg3wu'),
+(5, 'Klinik Pratama Sehat', 'clinic', 'Jl. Melati No. 8, Kota Sejahtera', '(021) 555-3344', '08:00 - 20:00', 'https://res.cloudinary.com/dfcknh4j1/image/upload/v1781963698/facilities/sdcpoh18nb0fr819hfsj.jpg', NULL, NULL, '2026-04-24 20:14:32', '2026-06-20 13:54:59', 'facilities/sdcpoh18nb0fr819hfsj'),
+(6, 'Polsek Timur', 'police', 'Jl. Anggrek No. 17, Kota Sejahtera', '(021) 555-9111', '24 Jam', 'https://res.cloudinary.com/dfcknh4j1/image/upload/v1781963699/facilities/xrzkvhjwsho9lb1ilpt0.jpg', NULL, NULL, '2026-04-24 20:14:32', '2026-06-20 13:54:59', 'facilities/xrzkvhjwsho9lb1ilpt0');
 
 -- --------------------------------------------------------
 
@@ -103,25 +105,27 @@ CREATE TABLE `reports` (
   `flagged` tinyint(1) DEFAULT 0,
   `vote_count` int(11) DEFAULT 0,
   `created_at` datetime DEFAULT current_timestamp(),
-  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `image_public_id` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `reports`
 --
 
-INSERT INTO `reports` (`id`, `user_id`, `facility_id`, `title`, `description`, `image_path`, `location_text`, `latitude`, `longitude`, `status`, `is_read`, `flagged`, `vote_count`, `created_at`, `updated_at`) VALUES
-(99, 12, 1, 'Lampu Jalan Mati di Depan RSUD', 'Lampu jalan utama depan RSUD sudah 3 hari mati, sangat gelap malam hari.', NULL, 'Jl. Kesehatan No.1', NULL, NULL, 'hidden', 1, 1, 15, '2026-04-20 09:15:00', '2026-04-28 12:59:39'),
-(100, 13, NULL, 'Sampah Menumpuk di Pasar', 'Tumpukan sampah di belakang pasar tradisional sudah seminggu tidak diangkut.', NULL, 'Pasar Induk, Jl. Pasar Baru', NULL, NULL, 'in_progress', 1, 0, 8, '2026-04-21 10:30:00', '2026-04-25 20:12:21'),
-(101, 14, 2, 'Trotoar Rusak di Polresta', 'Trotoar di seberang Polresta ambles, membahayakan pejalan kaki.', NULL, 'Jl. Keamanan No.10', NULL, NULL, 'in_progress', 1, 0, 5, '2026-04-22 08:00:00', '2026-04-25 20:12:21'),
-(102, 15, NULL, 'Jembatan Retak di Desa', 'Jembatan kecil di desa retak cukup parah.', NULL, 'Desa Sukamaju', NULL, NULL, 'in_progress', 1, 0, 9, '2026-04-17 07:30:00', '2026-04-25 20:12:21'),
-(103, 12, 3, 'Kebakaran Lahan Kosong Dekat Pos Damkar', 'Lahan kosong belakang Pos Damkar terbakar semalam.', NULL, 'Belakang Pos Damkar', NULL, NULL, 'in_progress', 1, 0, 20, '2026-04-19 22:00:00', '2026-04-25 20:12:21'),
-(105, 14, 5, 'Vandalisme di Klinik', 'Dinding klinik dicorat-coret.', NULL, 'Klinik Pratama Sehat', NULL, NULL, 'hidden', 1, 0, 0, '2026-04-25 13:10:00', '2026-04-25 20:12:21'),
-(106, 12, 1, 'Pohon Tumbang di Halaman RSUD', 'Pohon besar tumbang akibat angin kencang.', NULL, 'Halaman RSUD Kota Sejahtera', NULL, NULL, 'in_progress', 1, 0, 30, '2026-04-18 16:20:00', '2026-04-26 03:11:32'),
-(107, 13, 6, 'Kebisingan di Polsek', 'Motor berknalpot bising di depan Polsek.', NULL, 'Jl. Anggrek No.17', NULL, NULL, 'in_progress', 1, 0, 6, '2026-04-25 21:00:00', '2026-04-25 20:12:21'),
-(108, 14, NULL, 'Saluran Air Tersumbat di Perumahan', 'Drainase tersumbat sampah plastik.', NULL, 'Komplek Griya Asri', NULL, NULL, 'in_progress', 1, 0, 3, '2026-04-24 11:00:00', '2026-04-25 20:12:21'),
-(109, 16, 2, 'h3h3h3h3', 'ada kemalingan pagar besi wak', NULL, 'Jl. Keamanan No. 10, Kota Sejahtera', NULL, NULL, 'in_progress', 1, 0, 1, '2026-04-28 15:26:30', '2026-04-28 17:26:54'),
-(110, 16, 4, 'diddy', 'ada p diddy', NULL, 'Jl. Raya Barat No. 25, Kota Sejahtera', NULL, NULL, 'in_progress', 1, 0, 1, '2026-04-28 15:50:05', '2026-04-28 17:26:54');
+INSERT INTO `reports` (`id`, `user_id`, `facility_id`, `title`, `description`, `image_path`, `location_text`, `latitude`, `longitude`, `status`, `is_read`, `flagged`, `vote_count`, `created_at`, `updated_at`, `image_public_id`) VALUES
+(99, 12, 1, 'Lampu Jalan Mati di Depan RSUD', 'Lampu jalan utama depan RSUD sudah 3 hari mati, sangat gelap malam hari.', NULL, 'Jl. Kesehatan No.1', NULL, NULL, 'hidden', 1, 1, 15, '2026-04-20 09:15:00', '2026-04-28 12:59:39', NULL),
+(100, 13, NULL, 'Sampah Menumpuk di Pasar', 'Tumpukan sampah di belakang pasar tradisional sudah seminggu tidak diangkut.', NULL, 'Pasar Induk, Jl. Pasar Baru', NULL, NULL, 'in_progress', 1, 0, 8, '2026-04-21 10:30:00', '2026-04-25 20:12:21', NULL),
+(101, 14, 2, 'Trotoar Rusak di Polresta', 'Trotoar di seberang Polresta ambles, membahayakan pejalan kaki.', NULL, 'Jl. Keamanan No.10', NULL, NULL, 'in_progress', 1, 0, 5, '2026-04-22 08:00:00', '2026-04-25 20:12:21', NULL),
+(102, 15, NULL, 'Jembatan Retak di Desa', 'Jembatan kecil di desa retak cukup parah.', NULL, 'Desa Sukamaju', NULL, NULL, 'in_progress', 1, 0, 9, '2026-04-17 07:30:00', '2026-04-25 20:12:21', NULL),
+(103, 12, 3, 'Kebakaran Lahan Kosong Dekat Pos Damkar', 'Lahan kosong belakang Pos Damkar terbakar semalam.', NULL, 'Belakang Pos Damkar', NULL, NULL, 'in_progress', 1, 0, 20, '2026-04-19 22:00:00', '2026-04-25 20:12:21', NULL),
+(105, 14, 5, 'Vandalisme di Klinik', 'Dinding klinik dicorat-coret.', NULL, 'Klinik Pratama Sehat', NULL, NULL, 'hidden', 1, 0, 0, '2026-04-25 13:10:00', '2026-04-25 20:12:21', NULL),
+(106, 12, 1, 'Pohon Tumbang di Halaman RSUD', 'Pohon besar tumbang akibat angin kencang.', NULL, 'Halaman RSUD Kota Sejahtera', NULL, NULL, 'in_progress', 1, 0, 30, '2026-04-18 16:20:00', '2026-04-26 03:11:32', NULL),
+(107, 13, 6, 'Kebisingan di Polsek', 'Motor berknalpot bising di depan Polsek.', NULL, 'Jl. Anggrek No.17', NULL, NULL, 'in_progress', 1, 0, 6, '2026-04-25 21:00:00', '2026-04-25 20:12:21', NULL),
+(108, 14, NULL, 'Saluran Air Tersumbat di Perumahan', 'Drainase tersumbat sampah plastik.', NULL, 'Komplek Griya Asri', NULL, NULL, 'in_progress', 1, 0, 3, '2026-04-24 11:00:00', '2026-04-25 20:12:21', NULL),
+(109, NULL, 2, 'h3h3h3h3', 'ada kemalingan pagar besi wak', NULL, 'Jl. Keamanan No. 10, Kota Sejahtera', NULL, NULL, 'in_progress', 1, 0, 1, '2026-04-28 15:26:30', '2026-06-17 09:29:54', NULL),
+(110, NULL, 4, 'diddy', 'ada p diddy', NULL, 'Jl. Raya Barat No. 25, Kota Sejahtera', NULL, NULL, 'in_progress', 1, 1, 1, '2026-04-28 15:50:05', '2026-06-17 10:02:38', NULL),
+(114, 23, 6, 'dj spinning i said my my', 'flash is flash , flash is cool, flash was support , fkash aint no dued', 'https://res.cloudinary.com/dfcknh4j1/image/upload/v1781963701/reports/eg5irqu156pnd9h0tabn.png', 'Jl. Anggrek No. 17, Kota Sejahtera', NULL, NULL, 'hidden', 1, 0, 0, '2026-06-17 15:49:59', '2026-06-20 13:55:02', 'reports/eg5irqu156pnd9h0tabn');
 
 -- --------------------------------------------------------
 
@@ -137,13 +141,6 @@ CREATE TABLE `report_flags` (
   `created_at` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data untuk tabel `report_flags`
---
-
-INSERT INTO `report_flags` (`id`, `user_id`, `report_id`, `reason`, `created_at`) VALUES
-(1, 16, 99, NULL, '2026-04-28 12:58:31');
-
 -- --------------------------------------------------------
 
 --
@@ -158,20 +155,22 @@ CREATE TABLE `users` (
   `phone` varchar(20) DEFAULT NULL,
   `address` text DEFAULT NULL,
   `role` enum('citizen','admin') NOT NULL DEFAULT 'citizen',
-  `created_at` datetime DEFAULT current_timestamp()
+  `created_at` datetime DEFAULT current_timestamp(),
+  `provider` enum('local','google') NOT NULL DEFAULT 'local'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `users`
 --
 
-INSERT INTO `users` (`id`, `name`, `email`, `password`, `phone`, `address`, `role`, `created_at`) VALUES
-(7, 'Administrator', 'admin@smartcity.local', '$2b$10$.7F0wLhIu7H4ie.nc8fOGOAsFiAZ4KrRf/VFOHWg2uQJy3hyzgNLK', NULL, NULL, 'admin', '2026-04-25 22:32:21'),
-(12, 'Andi Wibowo', 'andi@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08123456789', 'Jl. Melati No.10', 'citizen', '2026-04-26 03:11:32'),
-(13, 'Siti Rahayu', 'siti@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08567812345', 'Jl. Anggrek No.5', 'citizen', '2026-04-26 03:11:32'),
-(14, 'Budi Santoso', 'budi@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08134567890', 'Jl. Mawar No.2', 'citizen', '2026-04-26 03:11:32'),
-(15, 'Dewi Lestari', 'dewi@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08215678901', 'Jl. Dahlia No.7', 'citizen', '2026-04-26 03:11:32'),
-(16, 'Felix Arlen T', 'felixat31@gmail.com', '$2b$10$abQcqv6iyRcXL3g7lfIfceBR6e7PHFHsCuWvmhNx7aw1dL/QwNKPq', '089687563779', 'Jl. Thamrin No.76 c, Pandau Hulu I, Kec. Medan Kota, Kota Medan, Sumatera Utara 20211', 'citizen', '2026-04-27 16:12:28');
+INSERT INTO `users` (`id`, `name`, `email`, `password`, `phone`, `address`, `role`, `created_at`, `provider`) VALUES
+(7, 'Administrator', 'admin@smartcity.local', '$2b$10$.7F0wLhIu7H4ie.nc8fOGOAsFiAZ4KrRf/VFOHWg2uQJy3hyzgNLK', NULL, NULL, 'admin', '2026-04-25 22:32:21', 'local'),
+(12, 'Andi Wibowo', 'andi@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08123456789', 'Jl. Melati No.10', 'citizen', '2026-04-26 03:11:32', 'local'),
+(13, 'Siti Rahayu', 'siti@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08567812345', 'Jl. Anggrek No.5', 'citizen', '2026-04-26 03:11:32', 'local'),
+(14, 'Budi Santoso', 'budi@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08134567890', 'Jl. Mawar No.2', 'citizen', '2026-04-26 03:11:32', 'local'),
+(15, 'Dewi Lestari', 'dewi@warga.com', '$2b$10$8KzQMZGEHcF6sV7QaGmfIu5GvXQbUZ4nI0l9EQfD1Pm3H8rx1OVYm', '08215678901', 'Jl. Dahlia No.7', 'citizen', '2026-04-26 03:11:32', 'local'),
+(23, 'Bagonggg', 'mathboi314159@gmail.com', '$2b$10$HUITzb1CfuFRRzZio199n.g6fX1ua3yxqs.e1eEYzIz4Fq3NtLmTe', '0839530953085', 'sss', 'citizen', '2026-06-17 05:29:27', 'local'),
+(26, 'Felix Arlen T', 'felixat31@gmail.com', '$2b$10$xcVG3VJppcy0zOpCwwRc8OlmU/PsZ2JvpJxlbGIfAyHfU9P6uj.dq', '089687563779', 'Jln MH Thamrin 76 C', 'citizen', '2026-06-20 08:02:39', 'google');
 
 -- --------------------------------------------------------
 
@@ -191,8 +190,8 @@ CREATE TABLE `user_report_votes` (
 --
 
 INSERT INTO `user_report_votes` (`user_id`, `report_id`, `created_at`, `id`) VALUES
-(16, 109, '2026-04-28 15:47:37', 1),
-(16, 110, '2026-04-28 16:08:15', 2);
+(NULL, 109, '2026-04-28 15:47:37', 1),
+(NULL, 110, '2026-04-28 16:08:15', 2);
 
 --
 -- Trigger `user_report_votes`
@@ -273,7 +272,7 @@ ALTER TABLE `user_report_votes`
 -- AUTO_INCREMENT untuk tabel `comments`
 --
 ALTER TABLE `comments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT untuk tabel `facilities`
@@ -285,25 +284,25 @@ ALTER TABLE `facilities`
 -- AUTO_INCREMENT untuk tabel `reports`
 --
 ALTER TABLE `reports`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=113;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=117;
 
 --
 -- AUTO_INCREMENT untuk tabel `report_flags`
 --
 ALTER TABLE `report_flags`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT untuk tabel `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT untuk tabel `user_report_votes`
 --
 ALTER TABLE `user_report_votes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)
