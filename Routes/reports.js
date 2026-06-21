@@ -6,7 +6,7 @@ const isAuth = require("../middleware/isAuth");
 const isAdmin = require("../middleware/isAdmin");
 const reportController = require("../controllers/reportController");
 const { Report, Facility } = require("../models");
-const validateImageBuffer = require('../middleware/validateImageBuffer');
+const validateImageBuffer = require("../middleware/validateImageBuffer");
 // Konfigurasi penyimpanan gambar laporan
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -27,9 +27,9 @@ const upload = multer({
     const ext = allowed.test(path.extname(file.originalname).toLowerCase());
     const mime = allowed.test(file.mimetype);
     if (ext && mime) return cb(null, true);
-    cb(new Error('Hanya file gambar yang diizinkan'));
+    cb(new Error("Hanya file gambar yang diizinkan"));
   },
-  limits: { fileSize: 2 * 1024 * 1024 } // 2MB
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
 });
 
 router.get("/search", reportController.searchReports);
@@ -37,7 +37,7 @@ router.get("/search", reportController.searchReports);
 // Rute milik user yang login
 router.get("/my/stats", isAuth, async (req, res) => {
   try {
-    const userId = req.user.id; 
+    const userId = req.user.id;
     const total = await Report.count({ where: { user_id: userId } });
     const resolved = await Report.count({
       where: { user_id: userId, status: "resolved" },
@@ -80,8 +80,20 @@ router.get("/my", isAuth, async (req, res) => {
 
 // ---------- RUTE DENGAN PARAMETER ----------
 router.get("/:id", isAuth, reportController.getReportById);
-router.post('/', isAuth, upload.single('image'), validateImageBuffer, reportController.createReport);
-router.put('/:id', isAuth, upload.single('image'), validateImageBuffer, reportController.updateOwnReport);
+router.post(
+  "/",
+  isAuth,
+  upload.single("image"),
+  validateImageBuffer,
+  reportController.createReport,
+);
+router.put(
+  "/:id",
+  isAuth,
+  upload.single("image"),
+  validateImageBuffer,
+  reportController.updateOwnReport,
+);
 router.put("/:id/status", isAdmin, reportController.updateStatus);
 router.delete("/:id", isAuth, reportController.deleteOwnReport);
 router.post("/:id/vote", isAuth, reportController.toggleVote);

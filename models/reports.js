@@ -49,4 +49,5 @@ Report.associate = (models) => {
 ReportFlag.associate = (models) => {
   ReportFlag.belongsTo(models.Report, { foreignKey: 'report_id' });
 };
+
 module.exports = Report;

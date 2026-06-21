@@ -67,7 +67,18 @@ const searchReports = async (req, res) => {
     }
 
     if (facility_id) where.facility_id = Number(facility_id);
-    if (flagged !== "") where.flagged = flagged === "1";
+    if (flagged !== "") {
+      if (flagged === "1") {
+        // Reports that HAVE at least one flag (subquery returns existing report_ids)
+        where.id = {
+          [Op.in]: sequelize.literal(`(SELECT report_id FROM report_flags)`),
+        };
+      } else {
+        where.id = {
+          [Op.notIn]: sequelize.literal(`(SELECT report_id FROM report_flags)`),
+        };
+      }
+    }
 
     if (date_from || date_to) {
       where.created_at = {};
@@ -169,6 +180,7 @@ const getReportById = async (req, res) => {
 
     const data = formatReport(report);
     data.flag_count = flagCount;
+    data.flagged = flagCount > 0; 
     data.hasVoted = hasVoted;
 
     if (isAdmin) {

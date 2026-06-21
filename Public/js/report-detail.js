@@ -160,12 +160,12 @@ async function flagReport() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menandai...';
 
   try {
-    const res = await apiFetch(`/api/reports/${reportId}/flag`, {
+    // apiFetch already returns parsed JSON – no .json() needed
+    const data = await apiFetch(`/api/reports/${reportId}/flag`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason })
     });
-    const data = await res.json();
 
     if (data.success) {
       // Increase flag count on page
@@ -179,14 +179,58 @@ async function flagReport() {
       // Hide modal
       bootstrap.Modal.getInstance(document.getElementById('flagModal')).hide();
     } else {
+      // Show backend message (e.g., "Anda sudah menandai...")
       alert(data.message || 'Gagal menandai laporan');
     }
   } catch (err) {
+    // This will only trigger for network errors now
     alert('Gagal terhubung ke server');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-flag"></i> Tandai';
   }
+}
+function renderComment(c) {
+  const authorName = c.Author?.name ?? 'Anonim';
+  const dateStr = fmtDate(c.created_at);
+  const repliesHtml = (c.Replies && c.Replies.length > 0)
+    ? `<div class="ms-4 mt-2">${c.Replies.map(r => renderComment(r)).join('')}</div>`
+    : '';
+
+  return `
+    <div class="d-flex mb-3" id="comment-${c.id}">
+      <div class="flex-shrink-0 me-2">
+        <i class="fas fa-user-circle fa-2x text-secondary"></i>
+      </div>
+      <div class="flex-grow-1">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <strong>${esc(authorName)}</strong>
+            <small class="text-muted ms-2">${dateStr}</small>
+            ${c.is_edited ? '<small class="text-muted ms-1">(diedit)</small>' : ''}
+          </div>
+          ${c.can_edit ? `
+            <div>
+              <button class="btn btn-sm btn-link text-decoration-none edit-comment-btn"
+                      data-id="${c.id}" data-content="${esc(c.content)}">
+                <i class="fas fa-pen"></i>
+              </button>
+              <button class="btn btn-sm btn-link text-danger text-decoration-none delete-comment-btn"
+                      data-id="${c.id}">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          ` : ''}
+        </div>
+        <div class="mt-1" id="comment-text-${c.id}">${esc(c.content)}</div>
+        <button class="btn btn-sm btn-link text-decoration-none reply-btn mt-1"
+                data-id="${c.id}" data-name="${esc(authorName)}">
+          <i class="fas fa-reply"></i> Balas
+        </button>
+        ${repliesHtml}
+      </div>
+    </div>
+  `;
 }
 // ---------- comments ----------
 async function loadComments() {
