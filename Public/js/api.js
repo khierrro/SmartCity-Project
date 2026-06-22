@@ -43,3 +43,24 @@ window.apiFetch = async (url, options = {}) => {
   }
   return data;
 };
+// ── Flash alert from URL query ──────────────────────────────────
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const msg = params.get('alert');
+  if (!msg) return;
+
+  // Remove the parameter from the URL without reloading
+  const url = new URL(window.location);
+  url.searchParams.delete('alert');
+  window.history.replaceState({}, document.title, url);
+
+  // Create a Bootstrap-styled alert (works if Bootstrap CSS is loaded)
+  const div = document.createElement('div');
+  div.className = 'alert alert-warning alert-dismissible fade show';
+  div.setAttribute('role', 'alert');
+  div.innerHTML = `
+    ${msg}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  `;
+  document.body.insertAdjacentElement('afterbegin', div);
+})();

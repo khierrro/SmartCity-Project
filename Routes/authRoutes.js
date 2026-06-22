@@ -2,7 +2,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const router = express.Router();
 const bcrypt = require("bcrypt");
-const User = require("../models/User");
+const User = require("../models/user");
 const {
   registerRules,
   loginRules,
@@ -117,6 +117,7 @@ router.post(
         sameSite: "lax",
         maxAge: 24 * 60 * 60 * 1000,
       });
+
 
       res.json({
         message: "Login berhasil",

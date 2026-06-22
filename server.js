@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const sequelize = require("./config/database");
 require("dotenv").config();
-const morgan = require('morgan');
+const morgan = require("morgan");
 
 const {
   authLimiter,
@@ -17,7 +17,7 @@ const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 
 app.use(cookieParser());
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 // ─────────────────────────────────────────
 // JWT Middleware – decode token from cookie
 // ─────────────────────────────────────────
@@ -102,7 +102,7 @@ app.use(express.json());
 // ─────────────────────────────────────────
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const User = require("./models/User");
+const User = require("./models/user");
 const bcrypt = require("bcrypt");
 
 passport.use(
@@ -322,7 +322,7 @@ app.use((req, res, next) => {
     return next();
   if (!req.path.endsWith(".html")) return next();
 
-  const filePath = path.join(__dirname, "public", req.path);
+  const filePath = path.join(__dirname, "Public", req.path);
   if (!fs.existsSync(filePath)) return next();
 
   fs.readFile(filePath, "utf8", (err, html) => {
@@ -446,16 +446,30 @@ app.use((req, res, next) => {
     res.send(result);
   });
 });
-
-// ── Inject reCAPTCHA & CSRF into public auth pages (unchanged) ──
 const publicAuthPages = ["/login.html", "/register.html"];
 app.use((req, res, next) => {
+  if (publicAuthPages.includes(req.path) && req.user) {
+    const message =
+      "Anda sudah login. Silakan logout terlebih dahulu untuk berganti akun.";
+    if (req.user.role === "admin") {
+      return res.redirect(
+        `/pages/admin.html?alert=${encodeURIComponent(message)}`,
+      );
+    } else {
+      return res.redirect(
+        `/pages/menu.html?alert=${encodeURIComponent(message)}`,
+      );
+    }
+  }
+
   if (!publicAuthPages.includes(req.path)) return next();
+
   const filePath = path.join(__dirname, "public", req.path);
   if (!fs.existsSync(filePath)) return next();
 
   fs.readFile(filePath, "utf8", (err, html) => {
     if (err) return next();
+
     const csrfToken = req.csrfToken();
     let result = html.replace(
       /__RECAPTCHA_SITE_KEY__/g,
@@ -473,12 +487,11 @@ app.use((req, res, next) => {
     res.send(result);
   });
 });
-
 // ─────────────────────────────────────────
 // Static files
 // ─────────────────────────────────────────
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "Public")));
 
 // Root redirect (now uses req.user)
 app.get("/", (req, res) => {
@@ -499,16 +512,16 @@ app.get("/api/health", async (req, res) => {
 // ─────────────────────────────────────────
 // ROUTES (same as before)
 // ─────────────────────────────────────────
-const citizenFlagRoutes = require("./routes/citizenflag");
+const citizenFlagRoutes = require("./Routes/citizenFlag");
 app.use("/api/reports", citizenFlagRoutes);
 
-const adminRoutes = require("./routes/admin");
+const adminRoutes = require("./Routes/admin");
 app.use("/api/admin", adminRoutes);
 
-const reportRoutes = require("./routes/reports");
+const reportRoutes = require("./Routes/reports");
 app.use("/api/reports", actionLimiter, reportRoutes);
 
-const commentRoutes = require("./routes/comments");
+const commentRoutes = require("./Routes/comments");
 app.use("/api/reports/:id/comments", actionLimiter, commentRoutes);
 
 const facilityRoutes = require("./Routes/facilityRoutes");
@@ -516,7 +529,7 @@ app.use("/api/facilities", actionLimiter, facilityRoutes);
 
 // Public facilities list (unchanged)
 app.get("/api/facilities", async (req, res) => {
-  const Facility = require("./models/Facility");
+  const Facility = require("./models/facility");
   const facilities = await Facility.findAll({ order: [["name", "ASC"]] });
   res.json(facilities);
 });

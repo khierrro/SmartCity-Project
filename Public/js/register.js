@@ -107,13 +107,13 @@ form.addEventListener("submit", async function (e) {
   const phone = phoneInput.value.trim();
   const address = addressInput.value.trim();
   const recaptchaToken = grecaptcha.getResponse();
-if (!recaptchaToken) {
-  alert("Please complete the reCAPTCHA");
-  return;
-}
+  
+  if (!recaptchaToken) {
+    alert("Please complete the reCAPTCHA");
+    return;
+  }
 
-const csrfToken = document.querySelector('input[name="_csrf"]').value;
-
+  const csrfToken = document.querySelector('input[name="_csrf"]').value;
 
   try {
     const res = await fetch("/register", {
@@ -128,18 +128,25 @@ const csrfToken = document.querySelector('input[name="_csrf"]').value;
       showMessage(data.message, "success");
       setTimeout(() => (window.location.href = "login.html"), 1500);
     } else {
+      // ❌ Error from server
       if (data.errors && Array.isArray(data.errors)) {
         showMessage(data.errors.join("<br>"), "danger");
       } else if (data.message) {
         showMessage(data.message, "danger");
       }
+      // 🔄 Reset reCAPTCHA on failure
+      if (typeof grecaptcha !== 'undefined') {
+        grecaptcha.reset();
+      }
     }
   } catch (err) {
     console.error(err);
     showMessage("Gagal koneksi ke server", "danger");
+    if (typeof grecaptcha !== 'undefined') {
+      grecaptcha.reset();
+    }
   }
 });
-
 function showMessage(msg, type) {
   if (messageDiv) {
     messageDiv.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;

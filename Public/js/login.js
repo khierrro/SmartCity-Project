@@ -68,14 +68,12 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
 
-  // Get reCAPTCHA token
   const recaptchaToken = grecaptcha.getResponse();
   if (!recaptchaToken) {
     alert("Please complete the reCAPTCHA");
     return;
   }
 
-  // Get CSRF token
   const csrfToken = document.querySelector('input[name="_csrf"]').value;
 
   try {
@@ -102,9 +100,16 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
       }
     } else {
       alert(data.message || "Login gagal");
+      // 🔄 Reset reCAPTCHA on failure
+      if (typeof grecaptcha !== 'undefined') {
+        grecaptcha.reset();
+      }
     }
   } catch (err) {
     console.error(err);
     alert("Gagal terhubung ke server");
+    if (typeof grecaptcha !== 'undefined') {
+      grecaptcha.reset();
+    }
   }
 });

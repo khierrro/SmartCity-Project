@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const isAuth = require("../middleware/isAuth");
-const Report = require("../models/Reports");
-const ReportFlag = require("../models/ReportFlag");
+const Report = require("../models/reports");
+const ReportFlag = require("../models/reportFlag");
 
 router.post("/:id/flag", isAuth, async (req, res) => {
   try {
