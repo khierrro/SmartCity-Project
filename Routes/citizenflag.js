@@ -3,8 +3,8 @@ const router = express.Router();
 const isAuth = require("../middleware/isAuth");
 const Report = require("../models/reports");
 const ReportFlag = require("../models/reportFlag");
-
-router.post("/:id/flag", isAuth, async (req, res) => {
+const { flagRules, handleValidationErrors } = require('../middleware/validators');
+router.post("/:id/flag", isAuth,flagRules,handleValidationErrors, async (req, res) => {
   try {
     const report = await Report.findByPk(req.params.id);
     if (!report)

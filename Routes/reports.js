@@ -7,6 +7,11 @@ const isAdmin = require("../middleware/isAdmin");
 const reportController = require("../controllers/reportController");
 const { Report, Facility } = require("../models");
 const validateImageBuffer = require("../middleware/validateImageBuffer");
+const {
+  reportRules,
+  reportQueryRules,
+  handleValidationErrors,
+} = require("../middleware/validators");
 // Konfigurasi penyimpanan gambar laporan
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -79,21 +84,37 @@ router.get("/my", isAuth, async (req, res) => {
 });
 
 // ---------- RUTE DENGAN PARAMETER ----------
-router.get("/:id", isAuth, reportController.getReportById);
+
+// Create report
 router.post(
   "/",
   isAuth,
   upload.single("image"),
   validateImageBuffer,
+  reportRules,
+  handleValidationErrors,
   reportController.createReport,
 );
+
+// Update report
 router.put(
   "/:id",
   isAuth,
   upload.single("image"),
   validateImageBuffer,
+  reportRules,
+  handleValidationErrors,
   reportController.updateOwnReport,
 );
+
+// Search reports
+router.get(
+  "/search",
+  reportQueryRules,
+  handleValidationErrors,
+  reportController.searchReports,
+);
+
 router.put("/:id/status", isAdmin, reportController.updateStatus);
 router.delete("/:id", isAuth, reportController.deleteOwnReport);
 router.post("/:id/vote", isAuth, reportController.toggleVote);

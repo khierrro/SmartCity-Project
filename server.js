@@ -539,6 +539,17 @@ app.get("/report-detail", (req, res) => {
   req.url = "/pages/report-detail.html";
   app.handle(req, res);
 });
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./config/swagger");
+
+app.use(
+  "/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    swaggerOptions: { supportedSubmitMethods: ["get"] } // safe for public
+  })
+);
+app.get("/docs.json", (req, res) => res.json(swaggerSpec));
 
 // 404
 app.use((req, res) => {

@@ -8,11 +8,12 @@ const {
   deleteComment,
   editComment,
 } = require('../controllers/commentController');
+const { commentRules, handleValidationErrors } = require('../middleware/validators');
  
 router.get('/',    isAuth, getComments);   // anyone logged in can read
-router.post('/',   isAuth, addComment);    // citizen posts comment
+router.post('/', isAuth, commentRules, handleValidationErrors, addComment);    // citizen posts comment
  
 router.delete('/:id', isAuth, deleteComment);
-router.put('/:id',    isAuth, editComment);
+router.put('/:id',    isAuth,commentRules,handleValidationErrors, editComment);
  
 module.exports = router;

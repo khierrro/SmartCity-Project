@@ -1,0 +1,2504 @@
+openapi: 3.0.3
+info:
+  title: SmartCity - Citizen Reporting & Facility Management API
+  description: >
+    REST API for the SmartCity citizen-reporting platform. Citizens can register,
+    submit reports about urban facilities/issues, vote, flag, and comment on
+    reports. Admins manage reports, facilities, and notifications through a
+    dedicated admin namespace.
+
+
+    **Authentication:** the API uses a JWT stored in an `httpOnly` cookie named
+    `token` (issued on `/login`, on successful Google OAuth, or refreshed on
+    `/profile` updates). There is no `Authorization: Bearer` header in this
+    implementation — the cookie is sent automatically by browsers, so API
+    clients must persist and resend the `token` cookie.
+
+
+    **CSRF protection:** every state-changing request (`POST`, `PUT`, `PATCH`,
+    `DELETE`) — including `/register` and `/login` — is protected by a
+    double-submit CSRF cookie. Clients must first perform a `GET` request
+    against any server-rendered page to receive the `x-csrf-token` cookie,
+    then echo that value back in the `X-CSRF-Token` request header on every
+    mutating call. The single exception is `POST /logout`, which is
+    registered before the CSRF middleware in the Express stack and therefore
+    does not require the header.
+
+
+    **Rate limiting:** all `/api/*` routes are subject to a global limiter
+    (60 req/min for `GET`, 20 req/min for mutating verbs), and `/register`,
+    `/login`, and `/profile` are additionally limited to 5 requests per 15
+    minutes per IP. Limited routes return `429` with a JSON body.
+
+
+    **Response shape inconsistency (preserved intentionally):** most
+    controllers return `{ "success": boolean, "message"|"data": ... }`, but
+    routes guarded only by the `isAdmin` middleware return `{ "error": string }`
+    for `401`/`403`, and several raw `admin.js` handlers return `{ "error": string }`
+    for `500` as well. This document reflects the exact shape returned by each
+    code path rather than normalizing it, so client implementations match the
+    real API.
+  version: 1.0.0
+  contact:
+    name: SmartCity Project
+    url: https://github.com/khierrro/SmartCity-Project
+  license:
+    name: ISC
+externalDocs:
+  description: Project README
+  url: https://github.com/khierrro/SmartCity-Project#readme
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://api.smartcity.example.com
+    description: Production server (placeholder - replace with real deployment URL)
+tags:
+  - name: Authentication
+    description: Registration, login, session/profile management (cookie + JWT based)
+  - name: Authentication - OAuth (Browser Flow)
+    description: >
+      Google OAuth endpoints. These are browser-redirect flows (HTTP 302), not
+      JSON APIs, and are not intended to be called directly by API clients/SDKs.
+  - name: Health
+    description: Service health check
+  - name: Facilities (Public)
+    description: Public, read-only access to city facilities
+  - name: Reports (Citizen)
+    description: Citizen-facing report creation, search, voting, and flagging
+  - name: Comments
+    description: Threaded comments on reports
+  - name: Admin - Dashboard
+    description: Admin statistics and notification management (requires admin role)
+  - name: Admin - Reports
+    description: Admin report moderation (requires admin role)
+  - name: Admin - Facilities
+    description: Admin facility CRUD (requires admin role)
+security: []
+paths:
+  # ============================================================
+  # AUTHENTICATION
+  # ============================================================
+  /register:
+    post:
+      tags: [Authentication]
+      summary: Register a new citizen account
+      description: >
+        Creates a new account with role `citizen` and provider `local`.
+        Rate limited to 5 requests / 15 minutes per IP (successful requests
+        are not counted against the limit).
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessage'
+              example:
+                message: Registrasi berhasil, silakan login
+        '400':
+          description: >
+            Validation failed (express-validator), required fields missing,
+            or reCAPTCHA missing/invalid.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApiErrorList'
+                  - $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Email sudah terdaftar
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /login:
+    post:
+      tags: [Authentication]
+      summary: Log in with email and password
+      description: >
+        Issues a JWT in an `httpOnly` cookie named `token` (1 day expiry) on
+        success. Optionally pass `role` to enforce that the account matches
+        the expected portal (`citizen` or `admin`). Rate limited to 5
+        requests / 15 minutes per IP.
+      security:
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful. The `token` JWT cookie is set via `Set-Cookie`.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: token=eyJhbGciOiJIUzI1NiIs...; HttpOnly; SameSite=Lax
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Validation failed, required fields missing, or reCAPTCHA missing/invalid.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApiErrorList'
+                  - $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Email not registered, role mismatch, or incorrect password.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                emailNotFound:
+                  value: { message: Email tidak terdaftar }
+                roleMismatchCitizen:
+                  value: { message: "Akun ini bukan akun warga. Silakan login melalui halaman admin." }
+                roleMismatchAdmin:
+                  value: { message: "Akun ini bukan akun admin. Silakan login melalui halaman warga." }
+                wrongPassword:
+                  value: { message: Password salah }
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /me:
+    get:
+      tags: [Authentication]
+      summary: Get the currently authenticated user
+      description: Reads the decoded JWT from the `token` cookie (no DB lookup).
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Currently logged-in user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          description: Not logged in (no valid `token` cookie)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeUnauthorized'
+
+  /profile:
+    put:
+      tags: [Authentication]
+      summary: Update the logged-in user's profile
+      description: >
+        Updates `phone` and/or `address`, and optionally changes the
+        password (requires `currentPassword` + `newPassword`). Google-provider
+        accounts cannot change password through this endpoint. On success the
+        `token` cookie is reissued with updated claims. Rate limited to 5
+        requests / 15 minutes per IP.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessage'
+              example:
+                message: Profil berhasil diperbarui
+        '400':
+          description: >
+            Validation failed, Google account attempted password change, or
+            `currentPassword` missing while `newPassword` was supplied.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ApiErrorList'
+                  - $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Not logged in, or `currentPassword` incorrect.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /account:
+    delete:
+      tags: [Authentication]
+      summary: Delete the logged-in user's account
+      description: >
+        For `local` provider accounts, requires `password` in the body. For
+        `google` provider accounts, requires a prior re-auth handshake via
+        `GET /auth/google/reauth` (sets a short-lived `reauth_token` cookie)
+        before this call will succeed.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountRequest'
+      responses:
+        '200':
+          description: Account deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleMessage'
+              example:
+                message: Akun berhasil dihapus
+        '400':
+          description: Password missing (local provider)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Password diperlukan untuk menghapus akun
+        '401':
+          description: Not logged in, or password incorrect (local provider)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Google re-authentication required, invalid, or expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleReauthRequired'
+        '404':
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /logout:
+    post:
+      tags: [Authentication]
+      summary: Log out
+      description: >
+        Clears the `token` and `connect.sid` cookies and redirects to
+        `/index.html`. This route is registered before the CSRF middleware in
+        the Express stack, so **no `X-CSRF-Token` header is required**. No
+        request body. Not rate limited.
+      responses:
+        '302':
+          description: Redirect to `/index.html` after clearing session cookies.
+          headers:
+            Location:
+              schema:
+                type: string
+                example: /index.html
+            Set-Cookie:
+              schema:
+                type: string
+                example: "token=; Max-Age=0, connect.sid=; Max-Age=0"
+
+  # ============================================================
+  # OAUTH (BROWSER FLOW ONLY)
+  # ============================================================
+  /auth/google:
+    get:
+      tags: [Authentication - OAuth (Browser Flow)]
+      summary: Start Google OAuth login
+      description: Redirects the browser to Google's consent screen. Not a JSON endpoint.
+      responses:
+        '302':
+          description: Redirect to Google's OAuth consent screen.
+
+  /auth/google/callback:
+    get:
+      tags: [Authentication - OAuth (Browser Flow)]
+      summary: Google OAuth callback
+      description: >
+        Handles Google's redirect back to the app. On success, issues the
+        `token` JWT cookie and redirects to `/pages/admin.html` or
+        `/pages/menu.html` depending on role (or completes the account-deletion
+        re-auth handshake and redirects to `/pages/profile.html`). On failure,
+        redirects to `/login.html`.
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+          description: OAuth authorization code supplied by Google.
+      responses:
+        '302':
+          description: Redirect to an app page, with the session cookie(s) set on success.
+
+  /auth/google/reauth:
+    get:
+      tags: [Authentication - OAuth (Browser Flow)]
+      summary: Trigger Google re-authentication (for account deletion)
+      description: >
+        Requires an existing `token` cookie. Sets a short-lived
+        `reauth_action` cookie and redirects to Google's consent screen with
+        `prompt=consent`. The resulting callback issues a `reauth_token`
+        cookie consumed by `DELETE /account`.
+      security:
+        - cookieAuth: []
+      responses:
+        '302':
+          description: Redirect to Google's consent screen, or to `/login.html` if not authenticated.
+
+  # ============================================================
+  # HEALTH
+  # ============================================================
+  /api/health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Verifies the database connection via Sequelize.
+      responses:
+        '200':
+          description: Service and database are healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: Database connection failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthError'
+
+  # ============================================================
+  # FACILITIES (PUBLIC)
+  # ============================================================
+  /api/facilities:
+    get:
+      tags: [Facilities (Public)]
+      summary: List all facilities
+      description: Returns all facilities ordered by name (ascending). Public, no authentication required.
+      responses:
+        '200':
+          description: List of facilities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Facility'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: Failed to fetch facilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Gagal mengambil data fasilitas
+
+  /api/facilities/{id}:
+    get:
+      tags: [Facilities (Public)]
+      summary: Get facility details
+      description: >
+        Returns a single facility plus `report_count`, the number of
+        associated reports whose status is not `hidden`. Public, no
+        authentication required.
+      parameters:
+        - $ref: '#/components/parameters/FacilityId'
+      responses:
+        '200':
+          description: Facility detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/FacilityDetail'
+        '404':
+          description: Facility not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Fasilitas tidak ditemukan
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: Failed to fetch facility detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Gagal mengambil detail fasilitas
+
+  # ============================================================
+  # REPORTS (CITIZEN)
+  # ============================================================
+  /api/reports/search:
+    get:
+      tags: [Reports (Citizen)]
+      summary: Search and filter reports
+      description: >
+        Public search endpoint with pagination. No authentication is
+        required and no server-side validation middleware is attached to
+        this route, so out-of-range/invalid query values are silently
+        ignored or clamped rather than rejected with `400`.
+
+
+        Visibility rule (as implemented): if `status` is omitted or set to
+        an invalid value, non-admin/anonymous callers never see reports with
+        status `hidden`. **If `status` is explicitly set to a valid value
+        (including `hidden`), it is honored for every caller regardless of
+        role** — there is no additional admin check in that branch of the
+        underlying code.
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Free-text search across title, description, and location_text.
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [new, in_progress, resolved, hidden]
+          description: >
+            Filter by exact status. See the operation description above —
+            an explicit, valid value is applied for any caller, including
+            anonymous ones.
+        - name: facility_id
+          in: query
+          schema:
+            type: integer
+        - name: flagged
+          in: query
+          schema:
+            type: string
+            enum: ['0', '1']
+          description: "'1' returns only reports with at least one flag; '0' returns only unflagged reports."
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [created_at, updated_at, vote_count]
+            default: created_at
+          description: Invalid values silently fall back to created_at (not rejected).
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: DESC
+          description: Any value other than exactly "ASC" (case-insensitive) falls back to DESC.
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Paginated list of matching reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchReportsResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/reports/my/stats:
+    get:
+      tags: [Reports (Citizen)]
+      summary: Get the logged-in citizen's report statistics
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Counts of the user's own reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyReportStats'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAuth'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleError'
+
+  /api/reports/my:
+    get:
+      tags: [Reports (Citizen)]
+      summary: List the logged-in citizen's reports
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: The user's reports, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MyReportItem'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAuth'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/reports/{id}:
+    get:
+      tags: [Reports (Citizen)]
+      summary: Get report details
+      description: >
+        Reports with status `hidden` are only visible to the report's owner
+        or an admin. Admins additionally receive the `flags` array.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      responses:
+        '200':
+          description: Report detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/ReportDetail'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAuth'
+        '403':
+          description: Report is hidden and the caller is neither the owner nor an admin.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Laporan tidak tersedia
+        '404':
+          $ref: '#/components/responses/ReportNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags: [Reports (Citizen)]
+      summary: Update own report
+      description: >
+        Only the report's owner may edit it, and only while its status is
+        `new` or `in_progress`. Uploading a new `image` replaces and deletes
+        the previous Cloudinary asset.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReportUpdateRequest'
+            encoding:
+              image:
+                contentType: image/jpeg, image/png, image/webp
+      responses:
+        '200':
+          description: Report updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Report'
+        '400':
+          description: >
+            Report already processed (status not `new`/`in_progress`), or the
+            uploaded image failed buffer validation (not a real JPEG/PNG/WebP).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                alreadyProcessed:
+                  value: { message: "Laporan sudah diproses, tidak dapat diedit" }
+                invalidImage:
+                  value: { message: "File tidak valid. Hanya JPEG, PNG, dan WebP yang diizinkan." }
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAuth'
+        '403':
+          description: Caller is not the report's owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Tidak punya izin
+        '404':
+          $ref: '#/components/responses/ReportNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags: [Reports (Citizen)]
+      summary: Delete own report
+      description: Owner or admin may delete. Also removes the associated Cloudinary image, if any.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      responses:
+        '200':
+          description: Report deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleSuccessMessage'
+              example:
+                message: Laporan dihapus
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAuth'
+        '403':
+          description: Caller is neither the owner nor an admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Tidak punya izin
+        '404':
+          $ref: '#/components/responses/ReportNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/reports:
+    post:
+      tags: [Reports (Citizen)]
+      summary: Create a new report
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReportCreateRequest'
+            encoding:
+              image:
+                contentType: image/jpeg, image/png, image/webp
+      responses:
+        '201':
+          description: Report created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Report'
+        '400':
+          description: Missing required fields, or the uploaded image failed buffer validation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                missingFields:
+                  value: { message: "Judul dan deskripsi wajib diisi" }
+                invalidImage:
+                  value: { message: "File tidak valid. Hanya JPEG, PNG, dan WebP yang diizinkan." }
+        '401':
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Silakan login
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/reports/{id}/status:
+    put:
+      tags: [Reports (Citizen)]
+      summary: Update a report's status (admin only)
+      description: >
+        Functionally equivalent to `PUT /api/admin/reports/{id}/status` but
+        exposed under the citizen reports namespace and guarded directly by
+        `isAdmin`.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportStatusUpdateRequest'
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      status:
+                        type: string
+                        enum: [new, in_progress, resolved, hidden]
+        '400':
+          description: Invalid status value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Status tidak valid
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '404':
+          $ref: '#/components/responses/ReportNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/reports/{id}/vote:
+    post:
+      tags: [Reports (Citizen)]
+      summary: Toggle a vote on a report
+      description: Voting again removes the existing vote (toggle behavior). One vote per user per report.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      responses:
+        '200':
+          description: Vote toggled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToggleVoteResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAuth'
+        '404':
+          $ref: '#/components/responses/ReportNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/reports/{id}/flag:
+    post:
+      tags: [Reports (Citizen)]
+      summary: Flag a report as inappropriate/invalid
+      description: >
+        Flagging is idempotent per user (a unique constraint on
+        `(user_id, report_id)` prevents duplicates); flagging again simply
+        confirms the existing flag rather than erroring. The first flag on a
+        report also sets `Report.flagged = true`.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlagCreateRequest'
+      responses:
+        '200':
+          description: Report flagged (or already flagged by this user)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlagResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAuth'
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: Laporan tidak ditemukan
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ============================================================
+  # COMMENTS
+  # ============================================================
+  /api/reports/{reportId}/comments:
+    get:
+      tags: [Comments]
+      summary: List top-level comments (with nested replies) for a report
+      description: >
+        Requires the caller to be logged in (any role). Returns top-level
+        comments ordered oldest-first, each with its `Replies` nested inline.
+        Each comment includes a computed `can_edit` flag for the current
+        caller. **Implementation note:** internally Express resolves this
+        path's parameter as `:id` (merged from the parent router); it is
+        renamed to `reportId` here purely for documentation clarity.
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReportIdForComments'
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAuth'
+        '404':
+          $ref: '#/components/responses/ReportNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags: [Comments]
+      summary: Add a comment (or reply) to a report
+      description: >
+        Comments cannot be added to reports with status `hidden`. Supply
+        `parent_id` to post a threaded reply to an existing comment on the
+        same report.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ReportIdForComments'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentCreateRequest'
+      responses:
+        '201':
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Comment'
+        '400':
+          description: Empty content, or invalid/mismatched `parent_id`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              examples:
+                emptyContent:
+                  value: { message: "Komentar tidak boleh kosong" }
+                invalidParent:
+                  value: { message: "Parent komentar tidak valid" }
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAuth'
+        '403':
+          description: Report does not accept comments (status is `hidden`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Laporan tidak menerima komentar
+        '404':
+          $ref: '#/components/responses/ReportNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/reports/{reportId}/comments/{commentId}:
+    put:
+      tags: [Comments]
+      summary: Edit a comment
+      description: >
+        The author may edit within 30 minutes of creation; an admin may edit
+        at any time. Sets `is_edited = true`. **Implementation note:** both
+        path segments are literally `:id` in Express (the inner one,
+        belonging to the comments router, takes precedence and is what the
+        controller uses); they are renamed `reportId`/`commentId` here for
+        clarity.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ReportIdForComments'
+        - $ref: '#/components/parameters/CommentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentUpdateRequest'
+      responses:
+        '200':
+          description: Comment updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Comment'
+        '400':
+          description: Empty content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Komentar tidak boleh kosong
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAuth'
+        '403':
+          description: Caller may not edit this comment (not author within edit window, and not admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Tidak dapat mengedit komentar ini
+        '404':
+          description: Comment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Komentar tidak ditemukan
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags: [Comments]
+      summary: Delete a comment
+      description: The author may delete within 30 minutes of creation; an admin may delete at any time.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ReportIdForComments'
+        - $ref: '#/components/parameters/CommentId'
+      responses:
+        '200':
+          description: Comment deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleSuccessMessage'
+              example:
+                message: Komentar dihapus
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAuth'
+        '403':
+          description: Caller may not delete this comment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Tidak dapat menghapus komentar ini
+        '404':
+          description: Comment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: Komentar tidak ditemukan
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ============================================================
+  # ADMIN - DASHBOARD
+  # ============================================================
+  /api/admin/statistics:
+    get:
+      tags: [Admin - Dashboard]
+      summary: Get dashboard statistics
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Aggregate report/facility statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStatistics'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+  /api/admin/unread-notifications:
+    get:
+      tags: [Admin - Dashboard]
+      summary: Get unread report notifications
+      description: Returns up to the 10 most recent reports where `is_read = false`.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Unread notification count and preview list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadNotificationsResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+  /api/admin/mark-all-read:
+    put:
+      tags: [Admin - Dashboard]
+      summary: Mark all reports as read
+      description: Sets `is_read = true` on every report currently marked unread. Does not change `status`.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      responses:
+        '200':
+          description: All unread reports marked as read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleSuccessFlag'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+  # ============================================================
+  # ADMIN - REPORTS
+  # ============================================================
+  /api/admin/reports:
+    get:
+      tags: [Admin - Reports]
+      summary: List reports (admin)
+      description: >
+        Returns a raw array (not wrapped in `success`/`data`). No query
+        validation middleware is attached: any `sort_by` other than
+        `vote_count` falls back to `created_at`, and any `order` other than
+        exactly `"ASC"` (case-insensitive) falls back to `DESC` — invalid
+        values are not rejected with `400`.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [created_at, vote_count]
+            default: created_at
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: DESC
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [new, in_progress, resolved, hidden]
+        - name: facility_id
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Matches against title, description, and location_text.
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            maximum: 100
+            default: 50
+          description: Clamped server-side to a maximum of 100.
+      responses:
+        '200':
+          description: Array of report summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminReportListItem'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+  /api/admin/reports/{id}:
+    get:
+      tags: [Admin - Reports]
+      summary: Get report details (admin)
+      description: Returns the report object directly (not wrapped in `success`/`data`).
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      responses:
+        '200':
+          description: Report detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminReportDetail'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '404':
+          $ref: '#/components/responses/AdminReportNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+    delete:
+      tags: [Admin - Reports]
+      summary: Delete a report (admin)
+      description: Also deletes the associated Cloudinary image, if any.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      responses:
+        '200':
+          description: Report deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleSuccessFlag'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '404':
+          $ref: '#/components/responses/AdminReportNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+  /api/admin/reports/{id}/status:
+    put:
+      tags: [Admin - Reports]
+      summary: Update report status (admin)
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportStatusUpdateRequest'
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleSuccessFlag'
+        '400':
+          description: Invalid status value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleError'
+              example:
+                error: Status tidak valid
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '404':
+          $ref: '#/components/responses/AdminReportNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+  /api/admin/reports/{id}/flags:
+    get:
+      tags: [Admin - Reports]
+      summary: List flags on a report (admin)
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReportId'
+      responses:
+        '200':
+          description: Flags for the report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReportFlagItem'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  # ============================================================
+  # ADMIN - FACILITIES
+  # ============================================================
+  /api/admin/facilities:
+    get:
+      tags: [Admin - Facilities]
+      summary: List all facilities (admin)
+      description: Returns a raw array (not wrapped in `success`/`data`), includes `image_public_id`.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Array of facilities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Facility'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+    post:
+      tags: [Admin - Facilities]
+      summary: Create a facility (admin)
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FacilityCreateRequest'
+            encoding:
+              image:
+                contentType: image/jpeg, image/png, image/webp
+      responses:
+        '201':
+          description: Facility created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Facility'
+        '400':
+          description: Uploaded image failed buffer validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: "File tidak valid. Hanya JPEG, PNG, dan WebP yang diizinkan."
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+  /api/admin/facilities/{id}:
+    get:
+      tags: [Admin - Facilities]
+      summary: Get a facility (admin)
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/FacilityId'
+      responses:
+        '200':
+          description: Facility
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Facility'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '404':
+          $ref: '#/components/responses/AdminFacilityNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+    put:
+      tags: [Admin - Facilities]
+      summary: Update a facility (admin)
+      description: Uploading a new `image` deletes the previous Cloudinary asset.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/FacilityId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FacilityUpdateRequest'
+            encoding:
+              image:
+                contentType: image/jpeg, image/png, image/webp
+      responses:
+        '200':
+          description: Facility updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Facility'
+        '400':
+          description: Uploaded image failed buffer validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                message: "File tidak valid. Hanya JPEG, PNG, dan WebP yang diizinkan."
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '404':
+          $ref: '#/components/responses/AdminFacilityNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+    delete:
+      tags: [Admin - Facilities]
+      summary: Delete a facility (admin)
+      description: Also deletes the associated Cloudinary image, if any.
+      security:
+        - cookieAuth: []
+        - csrfToken: []
+      parameters:
+        - $ref: '#/components/parameters/FacilityId'
+      responses:
+        '200':
+          description: Facility deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleSuccessFlag'
+        '401':
+          $ref: '#/components/responses/UnauthorizedIsAdmin'
+        '403':
+          $ref: '#/components/responses/ForbiddenIsAdmin'
+        '404':
+          $ref: '#/components/responses/AdminFacilityNotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/AdminServerError'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+      description: >
+        JWT issued on login (local or Google) and decoded on every request by
+        server middleware. Contains `id`, `name`, `email`, `role`, `phone`,
+        `address`, `provider`. There is no Bearer-token alternative in this
+        implementation.
+    csrfToken:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: >
+        Double-submit CSRF token. Obtain the current value from the
+        `x-csrf-token` cookie (set by the server when rendering any HTML
+        page, and exposed in a `<meta name="csrf-token">` tag) and echo it
+        back in this header on every `POST`/`PUT`/`PATCH`/`DELETE` request.
+        Form submissions may alternatively send it as a `_csrf` body field.
+
+  parameters:
+    ReportId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Report ID
+    FacilityId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Facility ID
+    CommentId:
+      name: commentId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: >
+        Comment ID. Implemented in Express as `:id` on the nested comments
+        router (mounted with `mergeParams`); renamed here to avoid colliding
+        with the report ID segment in this documented path.
+    ReportIdForComments:
+      name: reportId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: >
+        Report ID. Implemented in Express as `:id`, inherited from the
+        parent router via `mergeParams`; renamed here to avoid colliding with
+        the comment ID segment in this documented path.
+
+  responses:
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          examples:
+            auth:
+              summary: On /register, /login, /profile (5 / 15 min)
+              value: { success: false, message: "Terlalu banyak percobaan, coba lagi nanti." }
+            read:
+              summary: On GET /api/* (60 / min)
+              value: { success: false, message: "Terlalu banyak permintaan, tunggu sebentar." }
+            write:
+              summary: On mutating /api/* (20 / min)
+              value: { success: false, message: "Terlalu banyak aksi, silakan tunggu sebentar." }
+    ServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            message: Terjadi kesalahan server
+    AdminServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SimpleError'
+    UnauthorizedIsAuth:
+      description: Not logged in
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            message: Silakan login
+    UnauthorizedIsAdmin:
+      description: Not logged in
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SimpleError'
+          example:
+            error: Silakan login
+    ForbiddenIsAdmin:
+      description: Logged in but not an admin
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SimpleError'
+          example:
+            error: "Akses ditolak. Hanya admin."
+    ReportNotFound:
+      description: Report not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            success: false
+            message: Laporan tidak ditemukan
+    AdminReportNotFound:
+      description: Report not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SimpleError'
+          example:
+            error: Laporan tidak ditemukan
+    AdminFacilityNotFound:
+      description: Facility not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SimpleError'
+          example:
+            error: Fasilitas tidak ditemukan
+
+  schemas:
+    # ---------- Generic / shared error & success shapes ----------
+    ApiError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+      required: [message]
+
+    ApiErrorList:
+      type: object
+      description: Returned by express-validator's handleValidationErrors.
+      properties:
+        success:
+          type: boolean
+          example: false
+        errors:
+          type: array
+          items:
+            type: string
+      required: [success, errors]
+
+    SimpleError:
+      type: object
+      description: Used by routes guarded only by the isAdmin middleware, and by several raw admin.js handlers.
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    SimpleMessage:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    SimpleSuccessMessage:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+      required: [success, message]
+
+    SimpleSuccessFlag:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+      required: [success]
+
+    # ---------- Auth ----------
+    UserPublic:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 12
+        name:
+          type: string
+          example: Andi Wijaya
+        email:
+          type: string
+          format: email
+          example: andi@warga.com
+        role:
+          type: string
+          enum: [citizen, admin]
+        phone:
+          type: string
+          nullable: true
+          example: "081234567890"
+        address:
+          type: string
+          nullable: true
+
+    MeResponse:
+      allOf:
+        - $ref: '#/components/schemas/UserPublic'
+        - type: object
+          properties:
+            loggedIn:
+              type: boolean
+              example: true
+            provider:
+              type: string
+              enum: [local, google]
+              default: local
+
+    MeUnauthorized:
+      type: object
+      properties:
+        loggedIn:
+          type: boolean
+          example: false
+      required: [loggedIn]
+
+    RegisterRequest:
+      type: object
+      required: [name, email, password, g-recaptcha-response]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: Andi Wijaya
+        email:
+          type: string
+          format: email
+          example: andi@warga.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: >
+            Must contain at least one uppercase letter, one lowercase letter,
+            one digit, and one special character (!@#$%^&*(),.?":{}|<>).
+            Quote/backtick/backslash/semicolon characters and SQL comment
+            sequences (`--`, `/* */`) are rejected.
+          example: "P@ssword123"
+        phone:
+          type: string
+          nullable: true
+          pattern: '^(\+62|62|0)8[1-9][0-9]{6,10}$'
+          example: "081234567890"
+        address:
+          type: string
+          nullable: true
+          maxLength: 500
+        g-recaptcha-response:
+          type: string
+          description: Google reCAPTCHA v3 token for the "register" action.
+
+    LoginRequest:
+      type: object
+      required: [email, password, g-recaptcha-response]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        role:
+          type: string
+          enum: [citizen, admin]
+          description: If supplied, the account's actual role must match or login is rejected with 401.
+        g-recaptcha-response:
+          type: string
+          description: Google reCAPTCHA v3 token for the "login" action.
+
+    LoginResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Login berhasil
+        user:
+          $ref: '#/components/schemas/UserPublic'
+
+    ProfileUpdateRequest:
+      type: object
+      description: All fields optional; supply only what you want to change.
+      properties:
+        phone:
+          type: string
+          nullable: true
+          pattern: '^(\+62|62|0)8[1-9][0-9]{6,10}$'
+        address:
+          type: string
+          nullable: true
+          maxLength: 500
+        currentPassword:
+          type: string
+          format: password
+          description: Required if newPassword is supplied (local provider accounts only).
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
+          description: Must contain uppercase, lowercase, digit, and special character.
+
+    DeleteAccountRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          format: password
+          description: Required only for accounts with provider=local.
+
+    GoogleReauthRequired:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Verifikasi Google diperlukan sebelum menghapus akun
+        requiresReauth:
+          type: boolean
+          example: true
+
+    # ---------- Health ----------
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        database:
+          type: string
+          example: connected
+
+    HealthError:
+      type: object
+      properties:
+        error:
+          type: string
+
+    # ---------- Facility ----------
+    Facility:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          maxLength: 100
+        type:
+          type: string
+          nullable: true
+          maxLength: 50
+          example: Taman
+        address:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+          maxLength: 20
+        operating_hours:
+          type: string
+          nullable: true
+          maxLength: 100
+          example: "08:00 - 17:00"
+        image_path:
+          type: string
+          nullable: true
+          format: uri
+          description: Cloudinary secure URL.
+        image_public_id:
+          type: string
+          nullable: true
+          description: Internal Cloudinary asset identifier, used for deletion. Present on admin endpoints.
+        latitude:
+          type: number
+          format: double
+          nullable: true
+        longitude:
+          type: number
+          format: double
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FacilityDetail:
+      allOf:
+        - $ref: '#/components/schemas/Facility'
+        - type: object
+          properties:
+            report_count:
+              type: integer
+              description: Count of associated reports whose status is not 'hidden'.
+
+    FacilityCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        type:
+          type: string
+          maxLength: 50
+        address:
+          type: string
+        phone:
+          type: string
+          maxLength: 20
+        operating_hours:
+          type: string
+          maxLength: 100
+        image:
+          type: string
+          format: binary
+          description: JPEG, PNG, or WebP, max 2MB.
+
+    FacilityUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        type:
+          type: string
+          maxLength: 50
+        address:
+          type: string
+        phone:
+          type: string
+          maxLength: 20
+        operating_hours:
+          type: string
+          maxLength: 100
+        image:
+          type: string
+          format: binary
+          description: JPEG, PNG, or WebP, max 2MB. Replaces and deletes the previous image.
+
+    # ---------- Report ----------
+    Report:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          description: Sequelize TEXT column; no server-side maximum length is enforced.
+        location_text:
+          type: string
+          nullable: true
+          maxLength: 255
+        image_path:
+          type: string
+          nullable: true
+          format: uri
+        status:
+          type: string
+          enum: [new, in_progress, resolved, hidden]
+        vote_count:
+          type: integer
+        flagged:
+          type: boolean
+        is_read:
+          type: boolean
+        reporter:
+          type: string
+          description: Name of the reporting user, or "Akun Dihapus" if the account was deleted.
+        facility:
+          type: string
+          nullable: true
+          description: Facility name, if linked.
+        facility_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ReportSearchItem:
+      allOf:
+        - $ref: '#/components/schemas/Report'
+        - type: object
+          properties:
+            flag_count:
+              type: integer
+            date:
+              type: string
+              format: date
+              description: created_at truncated to YYYY-MM-DD.
+
+    SearchReportsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportSearchItem'
+
+    MyReportItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        location_text:
+          type: string
+          nullable: true
+        facility:
+          type: string
+          nullable: true
+        facility_id:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [new, in_progress, resolved, hidden]
+        vote_count:
+          type: integer
+        image_path:
+          type: string
+          nullable: true
+          format: uri
+        user_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    MyReportStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        resolved:
+          type: integer
+        in_progress:
+          type: integer
+
+    ReportFlagSummary:
+      type: object
+      description: Per-report flag summary, included only in admin views of ReportDetail.
+      properties:
+        user_name:
+          type: string
+          example: Akun Dihapus
+        reason:
+          type: string
+          example: Tanpa alasan
+        created_at:
+          type: string
+          format: date-time
+
+    ReportDetail:
+      allOf:
+        - $ref: '#/components/schemas/Report'
+        - type: object
+          properties:
+            flag_count:
+              type: integer
+            hasVoted:
+              type: boolean
+              description: Whether the current caller has voted on this report. False if not logged in.
+            can_comment:
+              type: boolean
+            flags:
+              type: array
+              description: Only present when the caller is an admin.
+              items:
+                $ref: '#/components/schemas/ReportFlagSummary'
+
+    ReportCreateRequest:
+      type: object
+      required: [title, description]
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          description: Sequelize TEXT column; no server-side maximum length is enforced.
+        facility_id:
+          type: integer
+          nullable: true
+        location_text:
+          type: string
+          nullable: true
+          maxLength: 255
+        image:
+          type: string
+          format: binary
+          description: JPEG, PNG, or WebP, max 2MB. Uploaded to Cloudinary.
+
+    ReportUpdateRequest:
+      type: object
+      description: All fields optional; only owner reports with status new/in_progress are editable.
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          description: Sequelize TEXT column; no server-side maximum length is enforced.
+        location_text:
+          type: string
+          nullable: true
+          maxLength: 255
+        facility_id:
+          type: integer
+          nullable: true
+        image:
+          type: string
+          format: binary
+          description: JPEG, PNG, or WebP, max 2MB. Replaces and deletes the previous image.
+
+    ReportStatusUpdateRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [new, in_progress, resolved, hidden]
+
+    ToggleVoteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        voted:
+          type: boolean
+          description: True if this call added a vote, false if it removed one.
+        vote_count:
+          type: integer
+
+    FlagCreateRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          nullable: true
+          maxLength: 255
+          description: >
+            Not validated server-side beyond trimming; 255 reflects the
+            underlying ReportFlag.reason database column size.
+
+    FlagResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        flagged:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Laporan ditandai
+
+    # ---------- Comments ----------
+    CommentAuthor:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        report_id:
+          type: integer
+        user_id:
+          type: integer
+          nullable: true
+        parent_id:
+          type: integer
+          nullable: true
+        content:
+          type: string
+          description: Sequelize TEXT column; no server-side maximum length is enforced (only non-empty is required).
+        likes:
+          type: integer
+        is_edited:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        Author:
+          $ref: '#/components/schemas/CommentAuthor'
+        can_edit:
+          type: boolean
+          description: Computed for the current caller (true for admins; for the author within 30 minutes of creation).
+        Replies:
+          type: array
+          description: Only present on top-level comments returned by GET .../comments.
+          items:
+            $ref: '#/components/schemas/Comment'
+
+    CommentCreateRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          description: Must be non-empty after trimming. No server-side maximum length is enforced.
+        parent_id:
+          type: integer
+          nullable: true
+          description: Set to reply to an existing comment on the same report.
+
+    CommentUpdateRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          description: Must be non-empty after trimming. No server-side maximum length is enforced.
+
+    # ---------- Report Flags (admin) ----------
+    ReportFlagItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        report_id:
+          type: integer
+        user_id:
+          type: integer
+        reason:
+          type: string
+          nullable: true
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+        User:
+          type: object
+          properties:
+            name:
+              type: string
+
+    # ---------- Admin views ----------
+    FacilityStat:
+      type: object
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+
+    LatestReportItem:
+      type: object
+      properties:
+        title:
+          type: string
+        date:
+          type: string
+          format: date
+
+    AdminStatistics:
+      type: object
+      properties:
+        total:
+          type: integer
+        resolved:
+          type: integer
+        in_progress:
+          type: integer
+        hidden:
+          type: integer
+        facilityStats:
+          type: array
+          items:
+            $ref: '#/components/schemas/FacilityStat'
+        latestReports:
+          type: array
+          items:
+            $ref: '#/components/schemas/LatestReportItem'
+
+    AdminReportListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        reporter:
+          type: string
+        facility:
+          type: string
+          description: Facility name, or "-" if unlinked.
+        status:
+          type: string
+          enum: [new, in_progress, resolved, hidden]
+        vote_count:
+          type: integer
+        date:
+          type: string
+          format: date
+
+    AdminReportDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        location_text:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [new, in_progress, resolved, hidden]
+        vote_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        reporter:
+          type: string
+        facility:
+          type: string
+          nullable: true
+
+    NotificationItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [new, in_progress, resolved, hidden]
+
+    UnreadNotificationsResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationItem'
