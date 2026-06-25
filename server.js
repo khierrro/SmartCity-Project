@@ -322,10 +322,13 @@ app.use((req, res, next) => {
     return next();
   if (!req.path.endsWith(".html")) return next();
 
-  const safePath = path.resolve(__dirname, "Public", req.path);// nosemgrep: path-join-resolve-traversal
-  if (!safePath.startsWith(path.resolve(__dirname, "Public") + path.sep)) {
+  const base = path.resolve(__dirname, "Public");
+  // "." + req.path makes the path relative, e.g., "./pages/admin.html"
+  const safePath = path.resolve(base, "." + req.path);
+  if (!safePath.startsWith(base + path.sep)) {
     return res.status(403).send("Forbidden");
   }
+  if (!fs.existsSync(safePath)) return next();
 
   fs.readFile(safePath, "utf8", (err, html) => {
     if (err) return next();
