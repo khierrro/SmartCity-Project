@@ -7,7 +7,7 @@ const db = {};
 fs.readdirSync(__dirname)
   .filter(file => file !== 'index.js' && file.endsWith('.js'))
   .forEach(file => {
-    const model = require(path.join(__dirname, file));
+    const model = require(path.join(__dirname, file)); // nosemgrep: path-join-resolve-traversal
     console.log(file, '→', model.name); // ← add this
     db[model.name] = model;
   });

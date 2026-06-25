@@ -322,10 +322,12 @@ app.use((req, res, next) => {
     return next();
   if (!req.path.endsWith(".html")) return next();
 
-  const filePath = path.join(__dirname, "Public", req.path);
-  if (!fs.existsSync(filePath)) return next();
+  const safePath = path.resolve(__dirname, "Public", req.path);// nosemgrep: path-join-resolve-traversal
+  if (!safePath.startsWith(path.resolve(__dirname, "Public") + path.sep)) {
+    return res.status(403).send("Forbidden");
+  }
 
-  fs.readFile(filePath, "utf8", (err, html) => {
+  fs.readFile(safePath, "utf8", (err, html) => {
     if (err) return next();
 
     const user = req.user || null; // from JWT
@@ -546,8 +548,8 @@ app.use(
   "/docs",
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec, {
-    swaggerOptions: { supportedSubmitMethods: ["get"] } // safe for public
-  })
+    swaggerOptions: { supportedSubmitMethods: ["get"] }, // safe for public
+  }),
 );
 app.get("/docs.json", (req, res) => res.json(swaggerSpec));
 

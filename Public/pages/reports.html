@@ -1,65 +1,95 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Laporan Publik - Smart City</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="stylesheet" href="../css/default.css">
-</head>
-<body>
-   <!--Navbar-->
-  <main class="container py-4">
-    <h2 class="text-center fw-bold mb-4">Laporan Warga</h2>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Laporan Publik - Smart City</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <link rel="stylesheet" href="../css/default.css" />
+  </head>
+  <body>
+    <!--Navbar-->
+    <main class="container py-4">
+      <h2 class="text-center fw-bold mb-4">Laporan Warga</h2>
 
-    <!-- Search & Filter -->
-    <div class="card shadow-sm p-3 mb-4">
-      <div class="row g-2 align-items-end">
-        <div class="col-md-4">
-          <input type="text" id="searchInput" class="form-control" placeholder="Cari judul, deskripsi, lokasi...">
-        </div>
-        <div class="col-md-2">
-          <select id="sortBy" class="form-select">
-            <option value="created_at">Tanggal</option>
-            <option value="vote_count">Vote</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <select id="sortOrder" class="form-select">
-            <option value="DESC">Terbaru</option>
-            <option value="ASC">Terlama</option>
-          </select>
-        </div>
-        <div class="col-md-2">
-          <button id="searchBtn" class="btn btn-primary w-100"><i class="fas fa-search"></i> Cari</button>
-        </div>
-        <div class="col-md-2">
-          <button id="resetBtn" class="btn btn-outline-secondary w-100"><i class="fas fa-redo"></i> Reset</button>
+      <!-- Search & Filter -->
+      <div class="card shadow-sm p-3 mb-4">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <input
+              type="text"
+              id="searchInput"
+              class="form-control"
+              placeholder="Cari judul, deskripsi, lokasi..."
+            />
+          </div>
+          <div class="col-md-2">
+            <select id="sortBy" class="form-select">
+              <option value="created_at">Tanggal</option>
+              <option value="vote_count">Vote</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select id="sortOrder" class="form-select">
+              <option value="DESC">Terbaru</option>
+              <option value="ASC">Terlama</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button id="searchBtn" class="btn btn-primary w-100">
+              <i class="fas fa-search"></i> Cari
+            </button>
+          </div>
+          <div class="col-md-2">
+            <button id="resetBtn" class="btn btn-outline-secondary w-100">
+              <i class="fas fa-redo"></i> Reset
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Daftar Laporan -->
-    <div id="reportList" class="row g-4">
-      <div class="col-12 text-center py-5 text-muted">
-        <i class="fas fa-spinner fa-spin fa-2x"></i> <p>Memuat laporan...</p>
+      <!-- Daftar Laporan -->
+      <div id="reportList" class="row g-4">
+        <div class="col-12 text-center py-5 text-muted">
+          <i class="fas fa-spinner fa-spin fa-2x"></i>
+          <p>Memuat laporan...</p>
+        </div>
       </div>
-    </div>
 
-    <!-- Load More -->
-    <div class="text-center mt-4">
-      <button id="loadMoreBtn" class="btn btn-outline-primary" style="display:none;">
-        <i class="fas fa-chevron-down me-1"></i> Tampilkan lebih banyak
-      </button>
-    </div>
-  </main>
+      <!-- Load More -->
+      <div class="text-center mt-4">
+        <button
+          id="loadMoreBtn"
+          class="btn btn-outline-primary"
+          style="display: none"
+        >
+          <i class="fas fa-chevron-down me-1"></i> Tampilkan lebih banyak
+        </button>
+      </div>
+    </main>
 
-  <footer class="text-center py-3 text-muted">@ 2026 Smart City Pengaduan.</footer>
+    <footer class="text-center py-3 text-muted">
+      @ 2026 Smart City Pengaduan.
+    </footer>
 
     <script src="../js/authguard.js"></script>
-  <script src ="../js/reports.js"></script>
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+    <script src="../js/reports.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+      crossorigin="anonymous"
+    ></script>
+  </body>
 </html>
