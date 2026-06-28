@@ -113,7 +113,7 @@ form.addEventListener("submit", async function (e) {
     return;
   }
 
-  const csrfToken = document.querySelector('input[name="_csrf"]').value;
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
   try {
     const res = await fetch("/register", {
