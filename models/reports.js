@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const ReportFlag = require('./ReportFlag');
 const Report = sequelize.define('Report', {
   title: {
     type: DataTypes.STRING(200),
@@ -44,10 +43,6 @@ Report.associate = (models) => {
   Report.belongsTo(models.User, { foreignKey: 'user_id', as: 'User' });
   Report.belongsTo(models.Facility, { foreignKey: 'facility_id' });
   Report.hasMany(models.ReportFlag, { foreignKey: 'report_id' });   // ← add this
-};
-
-ReportFlag.associate = (models) => {
-  ReportFlag.belongsTo(models.Report, { foreignKey: 'report_id' });
 };
 
 module.exports = Report;
