@@ -18,6 +18,7 @@ const jwt = require("jsonwebtoken");
 
 app.use(cookieParser());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+
 // ─────────────────────────────────────────
 // JWT Middleware – decode token from cookie
 // ─────────────────────────────────────────
@@ -290,6 +291,17 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+  if (req.path === '/login' || req.path === '/register') {
+    console.log('CSRF check:', {
+      ip: req.ip,
+      guestId: req.cookies.guest_id,
+      cookieToken: req.cookies['x-csrf-token'],
+      bodyToken: req.body?._csrf
+    });
+  }
+  next();
+});
 // ─────────────────────────────────────────
 // 6. RATE LIMITER + ROUTES
 // ─────────────────────────────────────────
