@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const isAuth = require("../middleware/isAuth");
 const Report = require("../models/reports");
-const ReportFlag = require("../models/reportFlag");
+const ReportFlag = require("../models/ReportFlag");
 const { flagRules, handleValidationErrors } = require('../middleware/validators');
 router.post("/:id/flag", isAuth,flagRules,handleValidationErrors, async (req, res) => {
   try {
