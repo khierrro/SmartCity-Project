@@ -517,19 +517,19 @@ app.get("/api/health", async (req, res) => {
 // ─────────────────────────────────────────
 // ROUTES (same as before)
 // ─────────────────────────────────────────
-const citizenFlagRoutes = require("./Routes/citizenFlag");
+const citizenFlagRoutes = require("./routes/citizenFlag");
 app.use("/api/reports", citizenFlagRoutes);
 
-const adminRoutes = require("./Routes/admin");
+const adminRoutes = require("./routes/admin");
 app.use("/api/admin", adminRoutes);
 
-const reportRoutes = require("./Routes/reports");
+const reportRoutes = require("./routes/reports");
 app.use("/api/reports", actionLimiter, reportRoutes);
 
-const commentRoutes = require("./Routes/comments");
+const commentRoutes = require("./routes/comments");
 app.use("/api/reports/:id/comments", actionLimiter, commentRoutes);
 
-const facilityRoutes = require("./Routes/facilityRoutes");
+const facilityRoutes = require("./routes/facilityRoutes");
 app.use("/api/facilities", actionLimiter, facilityRoutes);
 
 // Public facilities list (unchanged)
