@@ -74,7 +74,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     return;
   }
 
-  const csrfToken = document.querySelector('input[name="_csrf"]').value;
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
   try {
     const res = await fetch("/login", {
