@@ -40,21 +40,6 @@ const upload = multer({
 router.get("/search", reportController.searchReports);
 
 // Rute milik user yang login
-router.get("/my/stats", isAuth, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const total = await Report.count({ where: { user_id: userId } });
-    const resolved = await Report.count({
-      where: { user_id: userId, status: "resolved" },
-    });
-    const inProgress = await Report.count({
-      where: { user_id: userId, status: "in_progress" },
-    });
-    res.json({ total, resolved, in_progress: inProgress });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 router.get("/my", isAuth, async (req, res) => {
   try {

@@ -7,7 +7,7 @@ const { Op } = require("sequelize");
 const db = require("../models");
 const cloudinary = require("../middleware/cloudinary");
 const uploadToCloudinary = require("../middleware/uploadToCloudinary");
-const validateImageBuffer = require('../middleware/validateImageBuffer');
+const validateImageBuffer = require("../middleware/validateImageBuffer");
 const User = db.User;
 const Report = db.Report;
 const Facility = db.Facility;
@@ -38,18 +38,20 @@ router.get("/statistics", async (req, res) => {
     const hidden = await Report.count({ where: { status: "hidden" } });
 
     const facilityRows = await Facility.findAll({
-      attributes: {
-        include: [
-          [sequelize.fn("COUNT", sequelize.col("reports.id")), "reportCount"],
-        ],
-      },
-      include: [{
-        model: Report,
-        attributes: [],
-        where: { status: ["new", "in_progress", "resolved", "hidden"] },
-        required: false,
-      }],
-      group: ["Facility.id"],
+      attributes: [
+        "id",
+        "name",
+        [sequelize.fn("COUNT", sequelize.col("reports.id")), "reportCount"],
+      ],
+      include: [
+        {
+          model: Report,
+          attributes: [],
+          where: { status: ["new", "in_progress", "resolved", "hidden"] },
+          required: false,
+        },
+      ],
+      group: ["Facility.id", "Facility.name"], // 🔁 must match selected non-aggregated columns
       raw: true,
     });
 
@@ -68,7 +70,14 @@ router.get("/statistics", async (req, res) => {
       date: r.created_at.toISOString().split("T")[0],
     }));
 
-    res.json({ total, resolved, in_progress: inProgress, hidden, facilityStats, latestReports });
+    res.json({
+      total,
+      resolved,
+      in_progress: inProgress,
+      hidden,
+      facilityStats,
+      latestReports,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -77,7 +86,14 @@ router.get("/statistics", async (req, res) => {
 // ── REPORTS LIST ──
 router.get("/reports", async (req, res) => {
   try {
-    const { sort_by = "created_at", order = "DESC", status, facility_id, search, limit } = req.query;
+    const {
+      sort_by = "created_at",
+      order = "DESC",
+      status,
+      facility_id,
+      search,
+      limit,
+    } = req.query;
     const where = {};
     if (status) where.status = status;
     if (facility_id) where.facility_id = facility_id;
@@ -89,7 +105,12 @@ router.get("/reports", async (req, res) => {
       ];
     }
 
-    const orderClause = [[sort_by === "vote_count" ? "vote_count" : "created_at", order.toUpperCase()]];
+    const orderClause = [
+      [
+        sort_by === "vote_count" ? "vote_count" : "created_at",
+        order.toUpperCase(),
+      ],
+    ];
     const limitVal = Math.min(parseInt(limit) || 50, 100); // ← cap at 100
 
     const reports = await Report.findAll({
@@ -126,7 +147,8 @@ router.get("/reports/:id", async (req, res) => {
         { model: Facility, attributes: ["name"] },
       ],
     });
-    if (!report) return res.status(404).json({ error: "Laporan tidak ditemukan" });
+    if (!report)
+      return res.status(404).json({ error: "Laporan tidak ditemukan" });
     res.json({
       id: report.id,
       title: report.title,
@@ -151,7 +173,8 @@ router.put("/reports/:id/status", async (req, res) => {
       return res.status(400).json({ error: "Status tidak valid" });
     }
     const report = await Report.findByPk(req.params.id);
-    if (!report) return res.status(404).json({ error: "Laporan tidak ditemukan" });
+    if (!report)
+      return res.status(404).json({ error: "Laporan tidak ditemukan" });
     report.status = status;
     await report.save();
     res.json({ success: true });
@@ -164,7 +187,8 @@ router.put("/reports/:id/status", async (req, res) => {
 router.delete("/reports/:id", async (req, res) => {
   try {
     const report = await Report.findByPk(req.params.id);
-    if (!report) return res.status(404).json({ error: "Laporan tidak ditemukan" });
+    if (!report)
+      return res.status(404).json({ error: "Laporan tidak ditemukan" });
 
     if (report.image_public_id) {
       try {
@@ -194,70 +218,87 @@ router.get("/facilities", async (req, res) => {
 router.get("/facilities/:id", async (req, res) => {
   try {
     const facility = await Facility.findByPk(req.params.id);
-    if (!facility) return res.status(404).json({ error: "Fasilitas tidak ditemukan" });
+    if (!facility)
+      return res.status(404).json({ error: "Fasilitas tidak ditemukan" });
     res.json(facility);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post("/facilities", upload.single("image"),validateImageBuffer, async (req, res) => {
-  try {
-    const { name, type, address, phone, operating_hours } = req.body;
+router.post(
+  "/facilities",
+  upload.single("image"),
+  validateImageBuffer,
+  async (req, res) => {
+    try {
+      const { name, type, address, phone, operating_hours } = req.body;
 
-    let image_path = null;
-    let image_public_id = null;
+      let image_path = null;
+      let image_public_id = null;
 
-    if (req.file) {
-      const result = await uploadToCloudinary(req.file.buffer, "facilities");
-      image_path = result.secure_url;
-      image_public_id = result.public_id;
-    }
-
-    const facility = await Facility.create({
-      name, type, address, phone, operating_hours,
-      image_path,
-      image_public_id,
-    });
-    res.status(201).json(facility);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.put("/facilities/:id", upload.single("image"),validateImageBuffer, async (req, res) => {
-  try {
-    const facility = await Facility.findByPk(req.params.id);
-    if (!facility) return res.status(404).json({ error: "Fasilitas tidak ditemukan" });
-
-    const { name, type, address, phone, operating_hours } = req.body;
-    const updateData = { name, type, address, phone, operating_hours };
-
-    if (req.file) {
-      // Delete old image from Cloudinary
-      if (facility.image_public_id) {
-        try {
-          await cloudinary.uploader.destroy(facility.image_public_id);
-        } catch (err) {
-          console.error("Failed to delete old image:", err);
-        }
+      if (req.file) {
+        const result = await uploadToCloudinary(req.file.buffer, "facilities");
+        image_path = result.secure_url;
+        image_public_id = result.public_id;
       }
-      const result = await uploadToCloudinary(req.file.buffer, "facilities");
-      updateData.image_path = result.secure_url;
-      updateData.image_public_id = result.public_id;
-    }
 
-    await facility.update(updateData);
-    res.json(facility);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+      const facility = await Facility.create({
+        name,
+        type,
+        address,
+        phone,
+        operating_hours,
+        image_path,
+        image_public_id,
+      });
+      res.status(201).json(facility);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
+
+router.put(
+  "/facilities/:id",
+  upload.single("image"),
+  validateImageBuffer,
+  async (req, res) => {
+    try {
+      const facility = await Facility.findByPk(req.params.id);
+      if (!facility)
+        return res.status(404).json({ error: "Fasilitas tidak ditemukan" });
+
+      const { name, type, address, phone, operating_hours } = req.body;
+      const updateData = { name, type, address, phone, operating_hours };
+
+      if (req.file) {
+        // Delete old image from Cloudinary
+        if (facility.image_public_id) {
+          try {
+            await cloudinary.uploader.destroy(facility.image_public_id);
+          } catch (err) {
+            console.error("Failed to delete old image:", err);
+          }
+        }
+        const result = await uploadToCloudinary(req.file.buffer, "facilities");
+        updateData.image_path = result.secure_url;
+        updateData.image_public_id = result.public_id;
+      }
+
+      await facility.update(updateData);
+      res.json(facility);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
 
 router.delete("/facilities/:id", async (req, res) => {
   try {
     const facility = await Facility.findByPk(req.params.id);
-    if (!facility) return res.status(404).json({ error: "Fasilitas tidak ditemukan" });
+    if (!facility)
+      return res.status(404).json({ error: "Fasilitas tidak ditemukan" });
 
     if (facility.image_public_id) {
       try {
@@ -303,7 +344,7 @@ router.put("/mark-all-read", async (req, res) => {
   try {
     await Report.update(
       { is_read: true },
-      { where: { is_read: false } } // ← single update, no status change
+      { where: { is_read: false } }, // ← single update, no status change
     );
     res.json({ success: true });
   } catch (err) {
