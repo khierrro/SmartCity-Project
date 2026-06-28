@@ -39,9 +39,9 @@ router.get("/statistics", async (req, res) => {
 
     const facilityRows = await Facility.findAll({
       attributes: [
-        "id", // perlu untuk GROUP BY, bisa disembunyikan nanti
+        "id",
         "name",
-        [sequelize.fn("COUNT", sequelize.col("reports.id")), "reportCount"],
+        [sequelize.fn("COUNT", sequelize.col("Reports.id")), "reportCount"],
       ],
       include: [
         {
@@ -49,6 +49,7 @@ router.get("/statistics", async (req, res) => {
           attributes: [],
           where: { status: ["new", "in_progress", "resolved", "hidden"] },
           required: false,
+          duplicating: false,
         },
       ],
       group: ["Facility.id", "Facility.name"],
