@@ -532,27 +532,24 @@ app.get("/api/health", async (req, res) => {
 // ─────────────────────────────────────────
 // ROUTES (same as before)
 // ─────────────────────────────────────────
+
+
+// ─── ROUTES ───────────────────────────────────────────
+const commentRoutes = require("./routes/comments");
+app.use("/api/reports/:id/comments", actionLimiter, commentRoutes);  // ← first
+app.use("/api/comments", actionLimiter, commentRoutes)
+
 const citizenFlagRoutes = require("./routes/citizenFlag");
-app.use("/api/reports", citizenFlagRoutes);
+app.use("/api/reports", citizenFlagRoutes);                          // ← after comments
 
 const adminRoutes = require("./routes/admin");
 app.use("/api/admin", adminRoutes);
 
 const reportRoutes = require("./routes/reports");
-app.use("/api/reports", actionLimiter, reportRoutes);
-
-const commentRoutes = require("./routes/comments");
-app.use("/api/reports/:id/comments", actionLimiter, commentRoutes);
+app.use("/api/reports", actionLimiter, reportRoutes);                // ← last
 
 const facilityRoutes = require("./routes/facilityRoutes");
 app.use("/api/facilities", actionLimiter, facilityRoutes);
-
-// Public facilities list (unchanged)
-app.get("/api/facilities", async (req, res) => {
-  const Facility = require("./models/facility");
-  const facilities = await Facility.findAll({ order: [["name", "ASC"]] });
-  res.json(facilities);
-});
 
 // Dynamic report detail page
 app.get("/report-detail", (req, res) => {

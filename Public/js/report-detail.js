@@ -31,17 +31,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadReport();
   await loadComments();
 
-  document
-    .getElementById("submitCommentBtn")
-    ?.addEventListener("click", submitComment);
-  document
-    .getElementById("cancelReplyBtn")
-    ?.addEventListener("click", cancelReply);
-  document
-    .getElementById("confirmFlagBtn")
-    ?.addEventListener("click", flagReport);
-});
+  document.getElementById("submitCommentBtn")?.addEventListener("click", submitComment);
+  document.getElementById("cancelReplyBtn")?.addEventListener("click", cancelReply);
+  document.getElementById("confirmFlagBtn")?.addEventListener("click", flagReport);
 
+  // ── Comment delegation — attached ONCE here, never inside loadComments ──
+  const list = document.getElementById("commentsList");
+  list.addEventListener("click", (e) => {
+    const editBtn = e.target.closest(".edit-comment-btn");
+    const deleteBtn = e.target.closest(".delete-comment-btn");
+    const performBtn = e.target.closest(".perform-edit-btn");
+    const cancelBtn = e.target.closest(".cancel-edit-btn");
+
+    if (editBtn) {
+      e.preventDefault();
+      startEditComment(editBtn.dataset.id, editBtn.dataset.content);
+    }
+    if (deleteBtn) {
+      e.preventDefault();
+      deleteComment(deleteBtn.dataset.id);
+    }
+    if (performBtn) performEdit(performBtn.dataset.id);
+    if (cancelBtn) loadComments();
+  });
+});
 async function loadReport() {
   const cont = document.getElementById("reportContainer");
   try {
@@ -292,8 +305,7 @@ async function loadComments() {
   try {
     const data = await apiFetch(`${API}/reports/${reportId}/comments`);
     const comments = data?.data || [];
-    document.getElementById("commentCount").textContent =
-      `(${comments.length})`;
+    document.getElementById("commentCount").textContent = `(${comments.length})`;
 
     if (comments.length === 0) {
       list.innerHTML = '<p class="text-muted">Belum ada komentar.</p>';
@@ -302,31 +314,13 @@ async function loadComments() {
 
     list.innerHTML = comments.map((c) => renderComment(c)).join("");
 
-    // ── Reply buttons ──
+    // reply buttons are on new DOM nodes each time, so attach here is fine
     list.querySelectorAll(".reply-btn").forEach((btn) => {
       btn.addEventListener("click", () =>
         startReply(btn.dataset.id, btn.dataset.name),
       );
     });
 
-    // ── Edit / Delete / Perform / Cancel via delegation ──
-    list.addEventListener("click", (e) => {
-      const editBtn = e.target.closest(".edit-comment-btn");
-      const deleteBtn = e.target.closest(".delete-comment-btn");
-      const performBtn = e.target.closest(".perform-edit-btn");
-      const cancelBtn = e.target.closest(".cancel-edit-btn");
-
-      if (editBtn) {
-        e.preventDefault();
-        startEditComment(editBtn.dataset.id, editBtn.dataset.content);
-      }
-      if (deleteBtn) {
-        e.preventDefault();
-        deleteComment(deleteBtn.dataset.id);
-      }
-      if (performBtn) performEdit(performBtn.dataset.id);
-      if (cancelBtn) loadComments();
-    });
   } catch (err) {
     list.innerHTML = '<p class="text-danger">Gagal memuat komentar.</p>';
   }
