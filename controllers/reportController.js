@@ -180,7 +180,7 @@ const getReportById = async (req, res) => {
 
     const data = formatReport(report);
     data.flag_count = flagCount;
-    data.flagged = flagCount > 0; 
+    data.flagged = flagCount > 0;
     data.hasVoted = hasVoted;
 
     if (isAdmin) {
@@ -335,42 +335,25 @@ const deleteOwnReport = async (req, res) => {
 // -------------------- toggleVote (citizen) --------------------
 const toggleVote = async (req, res) => {
   try {
-    const reportId = req.params.id;
+    const reportId = parseInt(req.params.id);
     const userId = req.user.id;
 
     const report = await Report.findByPk(reportId);
     if (!report)
-      return res
-        .status(404)
-        .json({ success: false, message: "Laporan tidak ditemukan" });
+      return res.status(404).json({ success: false, message: "Laporan tidak ditemukan" });
 
-    const [vote, created] = await UserReportVote.findOrCreate({
+    const existing = await UserReportVote.findOne({
       where: { user_id: userId, report_id: reportId },
     });
 
-    if (!created) {
-      // Already voted — remove vote
-      await vote.destroy();
-      await Report.decrement("vote_count", { where: { id: reportId } });
-      const updated = await Report.findByPk(reportId, {
-        attributes: ["vote_count"],
-      });
-      return res.json({
-        success: true,
-        voted: false,
-        vote_count: updated.vote_count,
-      });
+    if (existing) {
+      await existing.destroy();       // trg_vote_delete handles decrement
+      await report.reload();
+      return res.json({ success: true, voted: false, vote_count: report.vote_count });
     } else {
-      // New vote
-      await Report.increment("vote_count", { where: { id: reportId } });
-      const updated = await Report.findByPk(reportId, {
-        attributes: ["vote_count"],
-      });
-      return res.json({
-        success: true,
-        voted: true,
-        vote_count: updated.vote_count,
-      });
+      await UserReportVote.create({ user_id: userId, report_id: reportId }); // trg_vote_insert handles increment
+      await report.reload();
+      return res.json({ success: true, voted: true, vote_count: report.vote_count });
     }
   } catch (err) {
     console.error("toggleVote error:", err);
