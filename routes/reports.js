@@ -84,7 +84,7 @@ router.get("/my", isAuth, async (req, res) => {
 });
 
 // ---------- RUTE DENGAN PARAMETER ----------
-
+router.get("/:id", reportController.getReportById);
 // Create report
 router.post(
   "/",
