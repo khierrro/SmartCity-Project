@@ -272,22 +272,22 @@ function renderComment(c) {
             <small class="text-muted ms-2">${dateStr}</small>
             ${c.is_edited ? '<small class="text-muted ms-1">(diedit)</small>' : ""}
           </div>
-          ${
-            c.can_edit
-              ? `
+          ${c.can_edit || c.can_delete ? `
             <div>
-              <button class="btn btn-sm btn-link text-decoration-none edit-comment-btn"
-                      data-id="${c.id}" data-content="${esc(c.content)}">
-                <i class="fas fa-pen"></i>
-              </button>
-              <button class="btn btn-sm btn-link text-danger text-decoration-none delete-comment-btn"
-                      data-id="${c.id}">
-                <i class="fas fa-trash"></i>
-              </button>
+              ${c.can_edit ? `
+                <button class="btn btn-sm btn-link text-decoration-none edit-comment-btn"
+                        data-id="${c.id}" data-content="${esc(c.content)}">
+                  <i class="fas fa-pen"></i>
+                </button>
+              ` : ""}
+              ${c.can_delete ? `
+                <button class="btn btn-sm btn-link text-danger text-decoration-none delete-comment-btn"
+                        data-id="${c.id}">
+                  <i class="fas fa-trash"></i>
+                </button>
+              ` : ""}
             </div>
-          `
-              : ""
-          }
+          ` : ""}
         </div>
         <div class="mt-1" id="comment-text-${c.id}">${esc(c.content)}</div>
         <button class="btn btn-sm btn-link text-decoration-none reply-btn mt-1"
