@@ -469,7 +469,7 @@ app.use((req, res, next) => {
 
   if (!publicAuthPages.includes(req.path)) return next();
 
-  const filePath = path.join(__dirname, "public", req.path);
+  const filePath = path.join(__dirname, "Public", req.path);
   if (!fs.existsSync(filePath)) return next();
 
   fs.readFile(filePath, "utf8", (err, html) => {
