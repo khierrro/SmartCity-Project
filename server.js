@@ -18,7 +18,7 @@ const jwt = require("jsonwebtoken");
 
 app.use(cookieParser());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
-
+app.set('trust proxy', true);
 // ─────────────────────────────────────────
 // JWT Middleware – decode token from cookie
 // ─────────────────────────────────────────
@@ -46,7 +46,21 @@ app.use((req, res, next) => {
   }
   next();
 });
+const { v4: uuidv4 } = require('uuid');
 
+app.use((req, res, next) => {
+  if (!req.cookies.guest_id) {
+    const guestId = uuidv4();
+    res.cookie('guest_id', guestId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000 // 1 hari
+    });
+    req.cookies.guest_id = guestId;
+  }
+  next();
+});
 const verifyUserExists = require("./middleware/verifyUserExists");
 app.use(verifyUserExists);
 
@@ -264,7 +278,7 @@ const { doubleCsrf } = require("csrf-csrf");
 
 const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
   getSecret: () => process.env.CSRF_SECRET,
-  getSessionIdentifier: (req) => req.user?.id?.toString() ?? req.ip,
+  getSessionIdentifier: (req) => req.user?.id?.toString() ?? req.cookies.guest_id ?? req.ip,
   cookieName: "x-csrf-token",
   cookieOptions: {
     httpOnly: true,
@@ -291,17 +305,6 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
-  if (req.path === '/login' || req.path === '/register') {
-    console.log('CSRF check:', {
-      ip: req.ip,
-      guestId: req.cookies.guest_id,
-      cookieToken: req.cookies['x-csrf-token'],
-      bodyToken: req.body?._csrf
-    });
-  }
-  next();
-});
 // ─────────────────────────────────────────
 // 6. RATE LIMITER + ROUTES
 // ─────────────────────────────────────────
