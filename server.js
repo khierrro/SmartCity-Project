@@ -18,7 +18,7 @@ const jwt = require("jsonwebtoken");
 
 app.use(cookieParser());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
-app.set('trust proxy', true);
+app.set('trust proxy', 1);
 // ─────────────────────────────────────────
 // JWT Middleware – decode token from cookie
 // ─────────────────────────────────────────
