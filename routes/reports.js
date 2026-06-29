@@ -68,6 +68,19 @@ router.get("/my", isAuth, async (req, res) => {
   }
 });
 
+router.get("/my/stats", isAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const [total, resolved, inProgress] = await Promise.all([
+      Report.count({ where: { user_id: userId } }),
+      Report.count({ where: { user_id: userId, status: "resolved" } }),
+      Report.count({ where: { user_id: userId, status: "in_progress" } }),
+    ]);
+    res.json({ success: true, total, resolved, in_progress: inProgress });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 // ---------- RUTE DENGAN PARAMETER ----------
 router.get("/:id", reportController.getReportById);
 // Create report
