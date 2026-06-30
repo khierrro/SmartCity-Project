@@ -1,5 +1,5 @@
 // public/js/profile.js
-CitizenGuard.protect();
+AuthGuard.protect(['citizen', 'admin']);
 // ---------- Navbar & Auth ----------
 async function checkLogin() {
   try {

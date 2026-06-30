@@ -36,12 +36,21 @@
               <label for="currentPassword" class="form-label">
                 Password Saat Ini <span class="text-danger">*</span>
               </label>
-              <input
-                type="password"
-                class="form-control"
-                id="currentPassword"
-                placeholder="Masukkan password Anda"
-              />
+              <div class="input-group">
+                <input
+                  type="password"
+                  class="form-control"
+                  id="currentPassword"
+                  placeholder="Masukkan password Anda"
+                />
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary toggle-password"
+                  data-target="currentPassword"
+                >
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+              </div>
               <div class="form-text">
                 Wajib diisi untuk menyimpan perubahan.
               </div>
@@ -81,27 +90,43 @@
 
             <div class="mb-3">
               <label for="newPassword" class="form-label">Password Baru</label>
-              <input
-                type="password"
-                class="form-control"
-                id="newPassword"
-                placeholder="Kosongkan jika tidak ingin mengubah"
-              />
-              <div class="form-text">
-                Min. 8 karakter, huruf besar, kecil, angka, dan karakter khusus.
+              <div class="input-group">
+                <input
+                  type="password"
+                  class="form-control"
+                  id="newPassword"
+                  placeholder="Kosongkan jika tidak ingin mengubah"
+                />
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary toggle-password"
+                  data-target="newPassword"
+                >
+                  <i class="fa-solid fa-eye"></i>
+                </button>
               </div>
+              <div id="newPasswordFeedback" class="mt-2 small"></div>
             </div>
 
             <div class="mb-3">
               <label for="confirmPassword" class="form-label"
                 >Konfirmasi Password Baru</label
               >
-              <input
-                type="password"
-                class="form-control"
-                id="confirmPassword"
-                placeholder="Ulangi password baru"
-              />
+              <div class="input-group">
+                <input
+                  type="password"
+                  class="form-control"
+                  id="confirmPassword"
+                  placeholder="Ulangi password baru"
+                />
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary toggle-password"
+                  data-target="confirmPassword"
+                >
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -124,9 +149,9 @@
       &copy; 2026 Smart City Pengaduan. All rights reserved.
     </footer>
 
-    <script src="../script/auth-guard.js"></script>
+    <script src="../js/authguard.js"></script>
     <script>
-      CitizenGuard.protect();
+      AuthGuard.protect(["citizen", "admin"]);
     </script>
     <script src="../js/edit-profile.js"></script>
     <script
@@ -134,5 +159,6 @@
       integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
       crossorigin="anonymous"
     ></script>
+    <script src="/js/passwordToggle.js"></script>
   </body>
 </html>

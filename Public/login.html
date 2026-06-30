@@ -53,13 +53,22 @@
               </div>
               <div class="mb-3">
                 <label>Password</label>
-                <input
-                  type="password"
-                  id="password"
-                  class="form-control"
-                  placeholder="Masukkan Password"
-                  required
-                />
+                <div class="input-group">
+                  <input
+                    type="password"
+                    id="password"
+                    class="form-control"
+                    placeholder="Masukkan Password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary toggle-password"
+                    data-target="password"
+                  >
+                    <i class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
               </div>
               <div class="mb-3 d-flex justify-content-center">
                 <div
@@ -114,5 +123,6 @@
 
     <!-- Login logic (dari file terpisah) -->
     <script src="../js/login.js"></script>
+    <script src="/js/passwordToggle.js"></script>
   </body>
 </html>

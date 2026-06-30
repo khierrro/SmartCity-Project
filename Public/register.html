@@ -84,14 +84,22 @@
 
               <div class="mb-3">
                 <label>Password</label>
-                <input
-                  type="password"
-                  id="password"
-                  class="form-control"
-                  placeholder="Buat Password"
-                  required
-                />
-                <div id="passwordFeedback" class="mt-2 small"></div>
+                <div class="input-group">
+                  <input
+                    type="password"
+                    id="password"
+                    class="form-control"
+                    placeholder="Masukkan Password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary toggle-password"
+                    data-target="password"
+                  >
+                    <i class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
               </div>
 
               <div class="mb-3">
@@ -144,7 +152,7 @@
         @ 2026 Smart City Pengaduan. All rights reserved.
       </p>
     </footer>
-
+    <script src="/js/passwordToggle.js"></script>
     <script src="js/register.js"></script>
   </body>
 </html>
