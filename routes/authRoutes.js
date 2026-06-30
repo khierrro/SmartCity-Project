@@ -11,8 +11,7 @@ const {
 } = require("../middleware/validators");
 const requireRecaptcha = require("../middleware/recaptcha");
 const { authLimiter } = require("../middleware/rateLimiter");
-
-// POST /register
+const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 10);
 router.post(
   "/register",
   authLimiter,
@@ -72,30 +71,14 @@ router.post(
       }
 
       const user = await User.findOne({ where: { email } });
-      if (!user) {
-        return res.status(401).json({ message: "Email tidak terdaftar" });
-      }
+      const roleOk = !requiredRole || (user && user.role === requiredRole);
+      const passwordOk = await bcrypt.compare(
+        password,
+        user ? user.password : DUMMY_HASH,
+      );
 
-      // --- CHECK ROLE ---
-      if (requiredRole && user.role !== requiredRole) {
-        if (requiredRole === "citizen" && user.role === "admin") {
-          return res.status(401).json({
-            message:
-              "Akun ini bukan akun warga. Silakan login melalui halaman admin.",
-          });
-        }
-        if (requiredRole === "admin" && user.role === "citizen") {
-          return res.status(401).json({
-            message:
-              "Akun ini bukan akun admin. Silakan login melalui halaman warga.",
-          });
-        }
-        return res.status(401).json({ message: "Role tidak sesuai" });
-      }
-
-      const match = await bcrypt.compare(password, user.password);
-      if (!match) {
-        return res.status(401).json({ message: "Password salah" });
+      if (!user || !roleOk || !passwordOk) {
+        return res.status(401).json({ message: "Email atau password salah" });
       }
       const token = jwt.sign(
         {
@@ -105,7 +88,7 @@ router.post(
           role: user.role,
           phone: user.phone,
           address: user.address,
-          provider: user.provider
+          provider: user.provider,
         },
         process.env.JWT_SECRET,
         { expiresIn: "1d" },
@@ -117,7 +100,6 @@ router.post(
         sameSite: "lax",
         maxAge: 24 * 60 * 60 * 1000,
       });
-
 
       res.json({
         message: "Login berhasil",
@@ -208,7 +190,7 @@ router.put(
             role: user.role,
             phone: phone !== undefined ? phone : user.phone,
             address: address !== undefined ? address : user.address,
-            provider: user.provider
+            provider: user.provider,
           },
           process.env.JWT_SECRET,
           { expiresIn: "1d" },

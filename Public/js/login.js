@@ -9,6 +9,7 @@ const roleConfig = {
     rightTitle: "BELUM PUNYA AKUN?",
     rightText: "Daftar sekarang dan mulai gunakan layanan kami!",
     showRegister: true,
+    showGoogleLogin: true,
     buttonClass: "btn-primary",
   },
   admin: {
@@ -19,6 +20,7 @@ const roleConfig = {
     rightTitle: "AKSES KHUSUS",
     rightText: "Hanya admin yang dapat login. Tidak ada pendaftaran untuk admin.",
     showRegister: false,
+    showGoogleLogin: false,
     buttonClass: "btn-danger",
   },
 };
@@ -113,3 +115,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     }
   }
 });
+const googleSection = document.getElementById("googleLoginSection");
+if (googleSection) {
+  googleSection.style.display = config.showGoogleLogin ? "block" : "none";
+}

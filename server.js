@@ -18,7 +18,7 @@ const jwt = require("jsonwebtoken");
 
 app.use(cookieParser());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
-app.set('trust proxy', 1);
+app.set("trust proxy", 1);
 // ─────────────────────────────────────────
 // JWT Middleware – decode token from cookie
 // ─────────────────────────────────────────
@@ -46,16 +46,16 @@ app.use((req, res, next) => {
   }
   next();
 });
-const { v4: uuidv4 } = require('uuid');
+const { v4: uuidv4 } = require("uuid");
 
 app.use((req, res, next) => {
   if (!req.cookies.guest_id) {
     const guestId = uuidv4();
-    res.cookie('guest_id', guestId, {
+    res.cookie("guest_id", guestId, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000 // 1 hari
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000, // 1 hari
     });
     req.cookies.guest_id = guestId;
   }
@@ -125,7 +125,9 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/auth/google/callback",
+      callbackURL:
+        process.env.GOOGLE_CALLBACK_URL ||
+        "http://localhost:3000/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
@@ -214,7 +216,14 @@ app.get(
 
       return res.redirect("/pages/profile.html?reauth=success");
     }
-
+    if (req.user.role === "admin") {
+      return res.redirect(
+        "/login.html?role=admin&error=" +
+          encodeURIComponent(
+            "Akun admin tidak dapat login melalui Google. Gunakan email dan password.",
+          ),
+      );
+    }
     // ── NORMAL LOGIN FLOW (unchanged) ─────────────
     const safeUser = {
       id: req.user.id,
@@ -278,7 +287,8 @@ const { doubleCsrf } = require("csrf-csrf");
 
 const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
   getSecret: () => process.env.CSRF_SECRET,
-  getSessionIdentifier: (req) => req.user?.id?.toString() ?? req.cookies.guest_id ?? req.ip,
+  getSessionIdentifier: (req) =>
+    req.user?.id?.toString() ?? req.cookies.guest_id ?? req.ip,
   cookieName: "x-csrf-token",
   cookieOptions: {
     httpOnly: true,
@@ -533,20 +543,19 @@ app.get("/api/health", async (req, res) => {
 // ROUTES (same as before)
 // ─────────────────────────────────────────
 
-
 // ─── ROUTES ───────────────────────────────────────────
 const commentRoutes = require("./routes/comments");
-app.use("/api/reports/:id/comments", actionLimiter, commentRoutes);  // ← first
-app.use("/api/comments", actionLimiter, commentRoutes)
+app.use("/api/reports/:id/comments", actionLimiter, commentRoutes); // ← first
+app.use("/api/comments", actionLimiter, commentRoutes);
 
 const citizenFlagRoutes = require("./routes/citizenFlag");
-app.use("/api/reports", citizenFlagRoutes);                          // ← after comments
+app.use("/api/reports", citizenFlagRoutes); // ← after comments
 
 const adminRoutes = require("./routes/admin");
 app.use("/api/admin", adminRoutes);
 
 const reportRoutes = require("./routes/reports");
-app.use("/api/reports", actionLimiter, reportRoutes);                // ← last
+app.use("/api/reports", actionLimiter, reportRoutes); // ← last
 
 const facilityRoutes = require("./routes/facilityRoutes");
 app.use("/api/facilities", actionLimiter, facilityRoutes);
