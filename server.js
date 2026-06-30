@@ -392,6 +392,9 @@ app.use((req, res, next) => {
                       </div>
                     </div>
                   </div>
+                  <a href="/pages/profile.html" style="text-decoration:none;color:#2563eb;border:1px solid #2563eb;padding:0.25rem 0.75rem;border-radius:0.25rem;font-size:0.875rem">
+                    <i class="fa-regular fa-circle-user"></i> Profil
+                  </a>
                   <span style="font-size:0.875rem;color:#555">Admin: ${user.name}</span>
                   <form action="/logout" method="POST" style="margin:0">
                     <input type="hidden" name="_csrf" value="${csrfToken}">
