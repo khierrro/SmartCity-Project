@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 const fs = require("fs");
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
-
+const multer = require("multer");
 app.use(cookieParser());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.set("trust proxy", 1);
@@ -579,7 +579,12 @@ app.use(
   }),
 );
 app.get("/docs.json", (req, res) => res.json(swaggerSpec));
-
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({ success: false, message: "Ukuran file maksimal 2MB." });
+  }
+  next(err);
+});
 // 404
 app.use((req, res) => {
   res.status(404).json({ error: "Halaman tidak ditemukan" });

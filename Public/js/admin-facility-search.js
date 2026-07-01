@@ -3,10 +3,14 @@ const BASE = "/api/admin";
 
 function typeLabel(type) {
   const map = {
-    hospital: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700"><i class="fa-solid fa-hospital text-[10px]"></i>Hospital</span>',
-    police: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"><i class="fa-solid fa-shield-halved text-[10px]"></i>Police</span>',
-    fire_station: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700"><i class="fa-solid fa-fire text-[10px]"></i>Fire Station</span>',
-    clinic: '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700"><i class="fa-solid fa-kit-medical text-[10px]"></i>Clinic</span>',
+    hospital:
+      '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700"><i class="fa-solid fa-hospital text-[10px]"></i>Hospital</span>',
+    police:
+      '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700"><i class="fa-solid fa-shield-halved text-[10px]"></i>Police</span>',
+    fire_station:
+      '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700"><i class="fa-solid fa-fire text-[10px]"></i>Fire Station</span>',
+    clinic:
+      '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700"><i class="fa-solid fa-kit-medical text-[10px]"></i>Clinic</span>',
   };
   return map[type] || `<span class="text-gray-500">${type}</span>`;
 }
@@ -30,8 +34,13 @@ async function loadFacilities() {
   tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat data...</td></tr>`;
 
   try {
-    const res = await fetch(`${BASE}/facilities`, { credentials: "same-origin" });
-    if (res.status === 401) { window.location.href = "/login.html?role=admin"; return; }
+    const res = await fetch(`${BASE}/facilities`, {
+      credentials: "same-origin",
+    });
+    if (res.status === 401) {
+      window.location.href = "/login.html?role=admin";
+      return;
+    }
     if (!res.ok) throw new Error("Gagal memuat data fasilitas");
     allFacilities = await res.json();
     applyFiltersAndRender();
@@ -41,7 +50,10 @@ async function loadFacilities() {
 }
 
 function applyFiltersAndRender() {
-  const nameFilter = document.getElementById("searchName").value.trim().toLowerCase();
+  const nameFilter = document
+    .getElementById("searchName")
+    .value.trim()
+    .toLowerCase();
   const typeFilter = document.getElementById("searchType").value;
   const filtered = allFacilities.filter((f) => {
     const matchName = !nameFilter || f.name.toLowerCase().includes(nameFilter);
@@ -62,38 +74,51 @@ function renderTable(facilities) {
     return;
   }
 
-  tbody.innerHTML = facilities.map((f) => {
-    const imgHtml = f.image_path
-      ? `<img src="${f.image_path}" alt="${f.name}" class="facility-img" />`
-      : `<div class="facility-img bg-gray-100 flex items-center justify-center text-gray-400"><i class="fa-solid fa-image"></i></div>`;
+  tbody.innerHTML = facilities
+    .map((f) => {
+      const imgHtml = f.image_path
+        ? `<img src="${f.image_path}" alt="${f.name}" class="facility-img" />`
+        : `<div class="facility-img bg-gray-100 flex items-center justify-center text-gray-400"><i class="fa-solid fa-image"></i></div>`;
 
-    return `
-      <tr class="border-t border-gray-50 hover:bg-gray-50 transition">
-        <td class="px-5 py-3">${imgHtml}</td>
-        <td class="px-5 py-3 font-semibold text-gray-800">${f.name}</td>
-        <td class="px-5 py-3">${typeLabel(f.type)}</td>
-        <td class="px-5 py-3 text-gray-500 max-w-[200px]" title="${f.address || ""}">${truncate(f.address)}</td>
-        <td class="px-5 py-3 text-gray-600">${f.phone || "-"}</td>
-        <td class="px-5 py-3 text-center">
-          <div class="flex items-center justify-center gap-2">
-            <button class="edit-facility-btn bg-yellow-50 hover:bg-yellow-100 text-yellow-600 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1"
-              data-id="${f.id}">
-              <i class="fas fa-edit"></i> Edit
-            </button>
-            <button class="delete-facility-btn bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1"
-              data-id="${f.id}" data-name="${f.name.replace(/"/g, '&quot;')}">
-              <i class="fas fa-trash"></i> Hapus
-            </button>
-          </div>
-        </td>
-      </tr>`;
-  }).join("");
+      return `
+  <tr class="border-t border-gray-50 hover:bg-gray-50 transition">
+    <td class="px-5 py-3">${imgHtml}</td>
+    <td class="px-5 py-3 font-semibold text-gray-800">
+      <a href="/pages/facility-detail.html?id=${f.id}" class="hover:text-blue-600 hover:underline">${f.name}</a>
+    </td>
+    <td class="px-5 py-3">${typeLabel(f.type)}</td>
+    <td class="px-5 py-3 text-gray-500 max-w-[200px]" title="${f.address || ""}">${truncate(f.address)}</td>
+    <td class="px-5 py-3 text-gray-600">${f.phone || "-"}</td>
+    <td class="px-5 py-3 text-center">
+      <div class="flex items-center justify-center gap-2">
+        <a href="/pages/facility-detail.html?id=${f.id}"
+          class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1">
+          <i class="fas fa-eye"></i> Detail
+        </a>
+        <button class="edit-facility-btn bg-yellow-50 hover:bg-yellow-100 text-yellow-600 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1"
+          data-id="${f.id}">
+          <i class="fas fa-edit"></i> Edit
+        </button>
+        <button class="delete-facility-btn bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1"
+          data-id="${f.id}" data-name="${f.name.replace(/"/g, "&quot;")}">
+          <i class="fas fa-trash"></i> Hapus
+        </button>
+      </div>
+    </td>
+  </tr>`;
+    })
+    .join("");
 }
 
 async function editFacility(id) {
   try {
-    const res = await fetch(`${BASE}/facilities/${id}`, { credentials: "same-origin" });
-    if (res.status === 401) { window.location.href = "/login.html?role=admin"; return; }
+    const res = await fetch(`${BASE}/facilities/${id}`, {
+      credentials: "same-origin",
+    });
+    if (res.status === 401) {
+      window.location.href = "/login.html?role=admin";
+      return;
+    }
     if (!res.ok) throw new Error("Gagal mengambil data fasilitas");
     const f = await res.json();
 
@@ -128,7 +153,10 @@ async function deleteFacility(id, name) {
       method: "DELETE",
       credentials: "same-origin",
     });
-    if (res.status === 401) { window.location.href = "/login.html?role=admin"; return; }
+    if (res.status === 401) {
+      window.location.href = "/login.html?role=admin";
+      return;
+    }
     if (!res.ok) throw new Error("Gagal menghapus");
     await loadFacilities();
   } catch (err) {
@@ -153,13 +181,21 @@ async function saveFacility(e) {
 
   const saveBtn = document.getElementById("saveBtn");
   saveBtn.disabled = true;
-  saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+  saveBtn.innerHTML =
+    '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
 
   try {
     const url = isEdit ? `${BASE}/facilities/${id}` : `${BASE}/facilities`;
     const method = isEdit ? "PUT" : "POST";
-    const res = await fetch(url, { method, credentials: "same-origin", body: formData });
-    if (res.status === 401) { window.location.href = "/login.html?role=admin"; return; }
+    const res = await fetch(url, {
+      method,
+      credentials: "same-origin",
+      body: formData,
+    });
+    if (res.status === 401) {
+      window.location.href = "/login.html?role=admin";
+      return;
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || "Gagal menyimpan");
@@ -206,30 +242,39 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ── Event delegation for table buttons ──
-  document.getElementById("facilityTableBody").addEventListener("click", (e) => {
-    const editBtn = e.target.closest(".edit-facility-btn");
-    const deleteBtn = e.target.closest(".delete-facility-btn");
-    if (editBtn) editFacility(editBtn.dataset.id);
-    if (deleteBtn) deleteFacility(deleteBtn.dataset.id, deleteBtn.dataset.name);
-  });
+  document
+    .getElementById("facilityTableBody")
+    .addEventListener("click", (e) => {
+      const editBtn = e.target.closest(".edit-facility-btn");
+      const deleteBtn = e.target.closest(".delete-facility-btn");
+      if (editBtn) editFacility(editBtn.dataset.id);
+      if (deleteBtn)
+        deleteFacility(deleteBtn.dataset.id, deleteBtn.dataset.name);
+    });
 
   const searchBtn = document.getElementById("searchBtn");
   if (searchBtn) searchBtn.addEventListener("click", applyFiltersAndRender);
 
   const searchName = document.getElementById("searchName");
-  if (searchName) searchName.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") applyFiltersAndRender();
-  });
+  if (searchName)
+    searchName.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") applyFiltersAndRender();
+    });
 
   const resetBtn = document.getElementById("resetBtn");
-  if (resetBtn) resetBtn.addEventListener("click", () => {
-    document.getElementById("searchName").value = "";
-    document.getElementById("searchType").value = "";
-    applyFiltersAndRender();
-  });
+  if (resetBtn)
+    resetBtn.addEventListener("click", () => {
+      document.getElementById("searchName").value = "";
+      document.getElementById("searchType").value = "";
+      applyFiltersAndRender();
+    });
 
   const addBtn = document.getElementById("openAddFacilityModal");
-  if (addBtn) addBtn.addEventListener("click", () => { resetForm(); showModal(); });
+  if (addBtn)
+    addBtn.addEventListener("click", () => {
+      resetForm();
+      showModal();
+    });
 
   const closeModalBtn = document.getElementById("closeModal");
   if (closeModalBtn) closeModalBtn.addEventListener("click", hideModal);
@@ -238,9 +283,10 @@ document.addEventListener("DOMContentLoaded", () => {
   if (cancelBtn) cancelBtn.addEventListener("click", hideModal);
 
   const facilityModal = document.getElementById("facilityModal");
-  if (facilityModal) facilityModal.addEventListener("click", (e) => {
-    if (e.target === facilityModal) hideModal();
-  });
+  if (facilityModal)
+    facilityModal.addEventListener("click", (e) => {
+      if (e.target === facilityModal) hideModal();
+    });
 
   const facilityForm = document.getElementById("facilityForm");
   if (facilityForm) facilityForm.addEventListener("submit", saveFacility);
