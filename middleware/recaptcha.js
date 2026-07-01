@@ -21,6 +21,8 @@ async function verifyRecaptcha(token, expectedAction = null) {
 
     if (process.env.NODE_ENV === 'production') {
       const allowedHosts = (process.env.RECAPTCHA_ALLOWED_HOSTS || '').split(',');
+      console.log('recaptcha hostname from Google:', data.hostname, '| allowed:', allowedHosts);
+
       if (allowedHosts.length && !allowedHosts.includes(data.hostname)) {
         return false;
       }
@@ -33,7 +35,6 @@ async function verifyRecaptcha(token, expectedAction = null) {
     return process.env.NODE_ENV !== 'production';
   }
 }
-
 // NOT async — must return the middleware function synchronously
 function requireRecaptcha(action = null) {
   return async (req, res, next) => {

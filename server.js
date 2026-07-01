@@ -581,7 +581,9 @@ app.use(
 app.get("/docs.json", (req, res) => res.json(swaggerSpec));
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
-    return res.status(400).json({ success: false, message: "Ukuran file maksimal 2MB." });
+    return res
+      .status(400)
+      .json({ success: false, message: "Ukuran file maksimal 2MB." });
   }
   next(err);
 });
