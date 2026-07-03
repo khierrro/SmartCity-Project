@@ -1,123 +1,138 @@
-```markdown
 # Smart City – Aplikasi Pengaduan Warga
 
-Aplikasi web full‑stack untuk pelaporan dan manajemen masalah perkotaan.  
-Warga dapat membuat laporan, memberi vote, mengomentari, dan memantau status penanganan.  
-Admin memiliki panel untuk mengelola laporan, fasilitas, notifikasi, dan melihat statistik.
+Aplikasi web full‑stack untuk pelaporan dan manajemen masalah perkotaan.
+Warga dapat membuat laporan, memberi vote, mengomentari, menandai (flag)
+konten, dan memantau status penanganan laporannya. Admin memiliki panel
+terpisah untuk mengelola laporan, fasilitas, notifikasi, dan melihat
+statistik.
+
+## Fitur Utama
+
+- Autentikasi JWT (httpOnly cookie) + login Google OAuth
+- Manajemen laporan: buat, edit, hapus, vote, komentar berantai, flag
+- Panel admin: statistik, moderasi, ubah status, notifikasi real‑time
+- Direktori & CRUD fasilitas publik (rumah sakit, polisi, damkar)
+- Upload gambar (Multer + Cloudinary)
+- Keamanan berlapis: Helmet/CSP, CSRF, rate limiting, reCAPTCHA v2
+- Dokumentasi REST API otomatis via Swagger
 
 ## Teknologi
 
-- **Backend:** Node.js, Express, Sequelize ORM (MySQL), Multer (upload), bcrypt
-- **Frontend:** HTML, CSS, JavaScript, Bootstrap 5, Tailwind CSS (halaman fasilitas)
-- **Database:** MySQL / MariaDB
+**Backend**
+
+- Node.js, Express.js
+- Sequelize ORM (MySQL/MariaDB)
+- Server-side HTML injection (tanpa template engine seperti EJS/Pug)
+
+**Autentikasi & Keamanan**
+
+- JWT (`jsonwebtoken`) via httpOnly cookie + Passport.js (Google OAuth, stateless)
+- bcrypt (hashing password)
+- Helmet + Content-Security-Policy (nonce per-request)
+- `csrf-csrf` (proteksi CSRF double-submit cookie)
+- Rate limiting bertingkat (login, baca, aksi, aksi sensitif)
+- Google reCAPTCHA v2
+
+**Layanan Pihak Ketiga**
+
+- Cloudinary (penyimpanan gambar)
+- Multer (handling upload file)
+
+**Dokumentasi API**
+
+- Swagger (`swagger-ui-express`) — tersedia di `/docs`
+
+**Frontend**
+
+- HTML, CSS, Vanilla JavaScript (fetch API)
+- Bootstrap 5, Tailwind CSS (CDN, halaman fasilitas)
+
+**Database & Hosting**
+
+- MySQL / MariaDB
+- Railway (hosting)
 
 ## Prasyarat
 
-| Perangkat | Keterangan |
-|-----------|------------|
-| [Node.js](https://nodejs.org/) | Versi 18 atau lebih baru |
-| [MySQL](https://dev.mysql.com/downloads/) | XAMPP, Laragon, atau server MySQL sendiri |
-| [Git](https://git-scm.com/) | Untuk clone repository |
+| Perangkat                                                         | Keterangan                                |
+| ----------------------------------------------------------------- | ----------------------------------------- |
+| [Node.js](https://nodejs.org/)                                    | Versi 18 atau lebih baru                  |
+| [MySQL](https://dev.mysql.com/downloads/)                         | XAMPP, Laragon, atau server MySQL sendiri |
+| [Git](https://git-scm.com/)                                       | Untuk clone repository                    |
+| Akun [Cloudinary](https://cloudinary.com/)                        | Untuk penyimpanan gambar                  |
+| Kredensial [Google OAuth](https://console.cloud.google.com/)      | Client ID & Secret untuk login Google     |
+| Kredensial [reCAPTCHA v2](https://www.google.com/recaptcha/admin) | Site key & secret key                     |
 
 ## Instalasi
 
 1. **Clone repository**
+
    ```bash
    git clone <url-repository>
    cd smartcity-project
    ```
 
-2. **Install dependency**
+2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
-3. **Buat database**
-   - Buka MySQL (phpMyAdmin, MySQL Workbench, dll.)
-   - Buat database baru bernama `smart_city_db`
-   - Import file `smart_city_db.sql` yang ada di root proyek
+3. **Buat file `.env`** di root project dan isi sesuai tabel
+   [Environment Variables](#environment-variables) di bawah.
 
-4. **Atur konfigurasi environment**
-   - Salin file `.env.example` menjadi `.env`:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edit `.env` sesuai pengaturan MySQL Anda:
-     ```env
-     DB_HOST=localhost
-     DB_USER=root
-     DB_PASS=
-     DB_NAME=smart_city_db
-     DB_PORT=3306
-     SESSION_SECRET=rahasia123
-     ```
+4. **Siapkan database**
+   - Buat database baru di MySQL (mis. lewat phpMyAdmin), sesuaikan
+     nama dengan `.env`.
+   - Jalankan migration/import skema — sesuaikan dengan cara kalian
+     bekerja: `npx sequelize-cli db:migrate` jika pakai migration
+     Sequelize, atau import file `.sql` lewat phpMyAdmin jika manual.
 
 5. **Jalankan server**
+
+   ```bash
+   npm run dev
+   ```
+
+   atau
+
    ```bash
    nodemon server.js
    ```
-   atau
-   ```bash
-   node server.js
-   ```
 
-6. **Buka di browser**
-   ```
-   http://localhost:3000
-   ```
+6. Buka `http://localhost:3000` di browser.
 
-## Akun Uji (Seeder)
+## Environment Variables
 
-| Peran  | Email                  | Password      |
-|--------|------------------------|---------------|
-| Admin  | admin@smartcity.local   | admin123      |
-| Warga  | andi@warga.com          | password123   |
-| Warga  | siti@warga.com          | password123   |
-| Warga  | budi@warga.com          | password123   |
-| Warga  | dewi@warga.com          | password123   |
+CONTOH :
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=
+DB_NAME=smart_city_db
+DB_PORT=3306
+SESSION_SECRET=xxxx
+ADMIN_SECRET=xxxx
+GOOGLE_CLIENT_ID=xxxx
+GOOGLE_CLIENT_SECRET=xxxx
+RECAPTCHA_SITE_KEY=xxxx
+RECAPTCHA_SECRET_KEY=xxxx
+NODE_ENV=development
+JWT_SECRET=xxxx
+CSRF_SECRET=xxxx
+CLOUDINARY_API_KEY = xxxx
+CLOUDINARY_API_SECRET= xxxx
+CLOUDINARY_CLOUD_NAME=xxxx
+GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
+DATABASE_URL=mysql://root:@localhost:3306/smart_city_db
+RECAPTCHA_ALLOWED_HOSTS=localhost
 
-## Struktur Proyek (ringkas)
+## Dokumentasi API
 
-```
-.
-├── config/          # Konfigurasi database (Sequelize)
-├── controllers/     # Logic API (report, comment, dll.)
-├── middleware/       # isAuth, isAdmin
-├── models/          # Sequelize models
-├── public/          # Static files (HTML, CSS, JS, gambar)
-│   ├── css/
-│   ├── js/
-│   ├── pages/       # Halaman citizen & admin
-│   ├── script/      # navbar.js universal
-│   └── img/
-├── routes/          # Route handler
-├── uploads/         # Direktori upload gambar (terabaikan Git)
-├── .env.example     # Template konfigurasi environment
-├── server.js        # Entry point aplikasi
-└── smart_city_db.sql # Dump database untuk seeder
-```
-
-## Fitur Utama
-
-- Registrasi & login warga/admin
-- Dashboard admin (statistik, top‑5 laporan, notifikasi)
-- Manajemen fasilitas (CRUD + gambar)
-- Pencarian laporan dengan filter & load‑more
-- Detail laporan dengan navbar dinamis (admin/warga)
-- Voting, flagging (tandai), dan komentar bersarang
-- Pembatasan akses berbasis role (server middleware + client guard)
-- Upload & penghapusan gambar laporan
-- Edit profil, ganti password, hapus akun
-- Session logout dan proteksi halaman
-
-## Catatan
-
-- File `.env` **tidak** dikomit ke Git (tercantum di `.gitignore`).
-- Folder `uploads/` (gambar laporan) juga diabaikan – akan dibuat otomatis saat upload pertama.
-
-
-## Lisensi
-
-Proyek ini dibuat untuk keperluan akademik (UTS).
+Setelah server berjalan, dokumentasi REST API (Swagger UI) dapat
+diakses di:
 
 ```
+http://localhost:3000/docs
+```
+
+a.
